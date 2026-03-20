@@ -157,6 +157,10 @@ uint isDMX()
 {
     return UNITY_ACCESS_INSTANCED_PROP(Props,_EnableDMX);
 }
+uint allowFineChannels()
+{
+    return UNITY_ACCESS_INSTANCED_PROP(Props,_EnableFineChannels);
+}
 #ifndef LASER
 uint isStrobe()
 {
@@ -300,12 +304,15 @@ half GetDMXChannel(uint DMXChannel)
 //function for getting the Pan Value (Channel 2)
 half GetFinePanValue(uint DMXChannel)
 {
+    if (allowFineChannels() == 0)
+        return 0;
+
     return getValueAtCoords(DMXChannel+1, _Udon_DMXGridRenderTextureMovement);
 }
 half GetPanValue(uint DMXChannel)
 {
     half inputValue = getValueAtCoords(DMXChannel, _Udon_DMXGridRenderTextureMovement);
-    //inputValue = (inputValue + (GetFinePanValue(DMXChannel) * 0.01));
+    inputValue = (inputValue + (GetFinePanValue(DMXChannel) / 256.));
     #if defined(VOLUMETRIC_YES) || defined(PROJECTION_YES) || defined(FIXTURE_EMIT) || defined(FIXTURE_SHADOWCAST) || defined(VRSL_SURFACE) || defined(VRSL_FLARE)
         return IF(isDMX() == 1, ((getMinMaxPan() * 2) * (inputValue)) - getMinMaxPan(), 0.0);
     #else
@@ -316,6 +323,9 @@ half GetPanValue(uint DMXChannel)
 
 half GetFineTiltValue(uint DMXChannel)
 {
+    if (allowFineChannels() == 0)
+        return 0;
+
     return getValueAtCoords(DMXChannel+3, _Udon_DMXGridRenderTextureMovement);
 }
 
@@ -323,7 +333,7 @@ half GetFineTiltValue(uint DMXChannel)
 half GetTiltValue(uint DMXChannel)
 {
     half inputValue = getValueAtCoords(DMXChannel + 2, _Udon_DMXGridRenderTextureMovement);
-    //inputValue = (inputValue + (GetFineTiltValue(DMXChannel) * 0.01));
+    inputValue = (inputValue + (GetFineTiltValue(DMXChannel) / 256.));
     #if defined(VOLUMETRIC_YES) || defined(PROJECTION_YES) || defined(FIXTURE_EMIT) || defined(FIXTURE_SHADOWCAST) || defined(VRSL_SURFACE) || defined(VRSL_FLARE)
         return IF(isDMX() == 1, ((getMinMaxTilt() * 2) * (inputValue)) - getMinMaxTilt(), 0.0);
     #else

@@ -45,6 +45,7 @@ public class VRSLInspector : ShaderGUI
     MaterialProperty _SignalDetectionSystem = null;
     MaterialProperty _SignalDetectionSensativity = null;
     MaterialProperty _EnableDMX = null;
+    MaterialProperty _EnableFineChannels = null;
     MaterialProperty _EnableExtraChannels = null;
     // MaterialProperty _Udon_DMXGridRenderTextureMovement = null;
     // MaterialProperty _Udon_DMXGridRenderTexture = null;
@@ -1079,6 +1080,7 @@ public class VRSLInspector : ShaderGUI
                 matEditor.ShaderProperty(_EnableDMX, new GUIContent("Enable DMX", "Enables or Disables reading from the DMX Render Textures"));
                 matEditor.ShaderProperty(_NineUniverseMode, new GUIContent("Enable Extended Universe Mode", "Enables or Disables extended universe mode (9-universes via RGB)"));
                 matEditor.ShaderProperty(_DMXChannel, new GUIContent("DMX Channel","Chooses the DMX Address to start this fixture at."));
+                matEditor.ShaderProperty(_EnableFineChannels, new GUIContent("Enable Fine Channels", "Enables fine channel input for Pan and Tilt, allowing for more precise movement control."));
                 EditorGUI.indentLevel--;   
                 VRSLStyles.PartingLine();
                 EditorGUILayout.HelpBox("These are the render texture grids used to read DMX signals from a video panel.", MessageType.None,true);
@@ -1265,6 +1267,7 @@ public class VRSLInspector : ShaderGUI
                 matEditor.ShaderProperty(_EnableDMX, new GUIContent("Enable DMX", "Enables or Disables reading from the DMX Render Textures"));
                 matEditor.ShaderProperty(_NineUniverseMode, new GUIContent("Enable Extended Universe Mode", "Enables or Disables extended universe mode (9-universes via RGB)"));
                 matEditor.ShaderProperty(_DMXChannel, new GUIContent("DMX Channel","Chooses the DMX Address to start this fixture at."));
+                matEditor.ShaderProperty(_EnableFineChannels, new GUIContent("Enable Fine Channels", "Enables fine channel input for Pan and Tilt, allowing for more precise movement control."));
                 matEditor.ShaderProperty(_EnableExtraChannels, new GUIContent("Enable Cone Length DMX Controls","Enable this if you want to be able to extend the lenghth of the cone on Channel 2!"));
                 EditorGUI.indentLevel--;   
                 VRSLStyles.PartingLine();
@@ -1594,6 +1597,7 @@ public class VRSLInspector : ShaderGUI
                 matEditor.ShaderProperty(_EnableDMX, new GUIContent("Enable DMX", "Enables or Disables reading from the DMX Render Textures"));
                 matEditor.ShaderProperty(_NineUniverseMode, new GUIContent("Enable Extended Universe Mode", "Enables or Disables extended universe mode (9-universes via RGB)"));
                 matEditor.ShaderProperty(_DMXChannel, new GUIContent("DMX Channel","Chooses the DMX Address to start this fixture at."));
+                matEditor.ShaderProperty(_EnableFineChannels, new GUIContent("Enable Fine Channels", "Enables fine channel input for Pan and Tilt, allowing for more precise movement control."));
                 EditorGUI.indentLevel--;   
                 VRSLStyles.PartingLine();
                 EditorGUILayout.HelpBox("These are the render texture grids used to read DMX signals from a video panel.", MessageType.None,true);

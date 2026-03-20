@@ -7,6 +7,7 @@ UNITY_INSTANCING_BUFFER_START(Props)
     UNITY_DEFINE_INSTANCED_PROP(uint, _EnableStrobe)
     UNITY_DEFINE_INSTANCED_PROP(uint, _EnableSpin)
     UNITY_DEFINE_INSTANCED_PROP(uint, _EnableDMX)
+    UNITY_DEFINE_INSTANCED_PROP(half, _EnableFineChannels)
     UNITY_DEFINE_INSTANCED_PROP(uint, _DMXChannel)
     UNITY_DEFINE_INSTANCED_PROP(uint, _ProjectionSelection)
     UNITY_DEFINE_INSTANCED_PROP(uint, _FixtureRotationX)
@@ -101,6 +102,10 @@ uint isStrobe()
 uint isDMX()
 {
     return UNITY_ACCESS_INSTANCED_PROP(Props,_EnableDMX);
+}
+uint allowFineChannels()
+{
+    return UNITY_ACCESS_INSTANCED_PROP(Props,_EnableFineChannels);
 }
 
 uint GetDMXChannel()

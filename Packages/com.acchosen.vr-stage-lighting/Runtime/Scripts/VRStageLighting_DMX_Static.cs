@@ -30,6 +30,7 @@ namespace VRSL
         [Header("DMX Settings")]
         [Tooltip ("Enables DMX mode for this fixture.")]
         public bool enableDMXChannels = true;
+        public bool enableFineChannels = false;
         [Tooltip ("The ID number for this fixture. This is mostly for organizational purposes and is entirely optional. Most DMX software have an ID attached to each fixture to run the fixtures through commands more easily, and it is recommended to have those IDs lined up here as well for the sake simplicity. This ID is public and can also be used for Udon scripting as well.")]
         public int fixtureID;
         [Tooltip ("The industry standard DMX Channel this fixture begins on. Most standard VRSL fixtures are 13 channels")]
@@ -310,6 +311,7 @@ namespace VRSL
             props.SetInt("_EnableStrobe", enableStrobe == true ? 1 : 0);
             props.SetInt("_EnableSpin", enableAutoSpin == true ? 1 : 0);
             props.SetInt("_EnableDMX", enableDMXChannels == true ? 1 : 0);
+            props.SetInt("_EnableFineChannels", enableFineChannels == true ? 1 : 0);
             props.SetInt("_ProjectionSelection", selectGOBO);
             props.SetFloat("_FixtureRotationX", tiltOffsetBlue);
             props.SetFloat("_FixtureBaseRotationY", panOffsetBlueGreen);
@@ -410,6 +412,7 @@ namespace VRSL
             props.SetInt("_EnableStrobe", 0);
             props.SetInt("_EnableSpin", enableAutoSpin == true ? 1 : 0);
             props.SetInt("_EnableDMX", 0);
+            props.SetInt("_EnableFineChannels", 0);
             props.SetInt("_ProjectionSelection", selectGOBO);
             props.SetFloat("_FixtureRotationX", tiltOffsetBlue);
             props.SetFloat("_FixtureBaseRotationY", panOffsetBlueGreen);
@@ -662,6 +665,18 @@ namespace VRSL
             set
             {
                 enableDMXChannels = value;
+                _UpdateInstancedProperties();
+            }
+        }
+        public bool allowFineChannels
+        {
+            get
+            {
+                return enableFineChannels;
+            }
+            set
+            {
+                enableFineChannels = value;
                 _UpdateInstancedProperties();
             }
         }
