@@ -3,6 +3,7 @@
     Properties
     {
         [Toggle] _EnableDMX ("Enable Stream DMX/DMX Control", Int) = 0
+        [Toggle] _EnableFineChannels ("Enable Fine Channels (For Pan/Tilt)", Int) = 0
         [Toggle] _EnableCompatibilityMode ("Enable Compatibility Mode", Int) = 0
         [Toggle] _EnableVerticalMode ("Enable Vertical Mode", Int) = 0
         _DMXChannel ("DMX Channel Number)", Int) = 0
@@ -105,6 +106,7 @@
                 UNITY_DEFINE_INSTANCED_PROP(uint, _EnableColorTextureSample)
                 UNITY_DEFINE_INSTANCED_PROP(uint, _LaserCount)
                 UNITY_DEFINE_INSTANCED_PROP(uint, _EnableDMX)
+                UNITY_DEFINE_INSTANCED_PROP(uint, _EnableFineChannels)
                 UNITY_DEFINE_INSTANCED_PROP(half, _Scroll)
                 UNITY_DEFINE_INSTANCED_PROP(half, _XRotation)
                 UNITY_DEFINE_INSTANCED_PROP(half, _YRotation)
@@ -441,6 +443,7 @@
                 UNITY_DEFINE_INSTANCED_PROP(uint, _EnableColorTextureSample)
                 UNITY_DEFINE_INSTANCED_PROP(uint, _LaserCount)
                 UNITY_DEFINE_INSTANCED_PROP(uint, _EnableDMX)
+                UNITY_DEFINE_INSTANCED_PROP(uint, _EnableFineChannels)
                 UNITY_DEFINE_INSTANCED_PROP(half, _Scroll)
                 UNITY_DEFINE_INSTANCED_PROP(half, _XRotation)
                 UNITY_DEFINE_INSTANCED_PROP(half, _YRotation)

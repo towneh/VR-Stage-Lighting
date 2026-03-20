@@ -93,6 +93,7 @@ public class DMXListItem
     public bool foldout;
     ///////////////////////////////////////////////////////////////////////
     private bool Z_enableDMXChannels; public bool P_enableDMXChannels; 
+    private bool Z_enableFineChannels; public bool P_enableFineChannels;
     private int Z_fixtureID; public int P_fixtureID;
     private int Z_dmxChannel; public int P_dmxChannel;
     private int Z_dmxUniverse; public int P_dmxUniverse;
@@ -126,6 +127,7 @@ public class DMXListItem
         this.light = light;
         this.foldout = this.light.foldout = foldout;
         Z_enableDMXChannels = P_enableDMXChannels = this.light.enableDMXChannels;
+        Z_enableFineChannels = P_enableFineChannels = this.light.enableFineChannels;
         Z_fixtureID = P_fixtureID = this.light.fixtureID;
         Z_dmxChannel = P_dmxChannel = this.light.dmxChannel;
         Z_dmxUniverse = P_dmxUniverse = this.light.dmxUniverse;
@@ -174,6 +176,7 @@ public class DMXListItem
         #pragma warning restore 0618 //suppressing obsoletion warnings
 #endif
         light.enableDMXChannels = P_enableDMXChannels = Z_enableDMXChannels;
+        light.enableFineChannels = P_enableFineChannels = Z_enableFineChannels;
         light.fixtureID = P_fixtureID = Z_fixtureID;
         light.dmxChannel = P_dmxChannel = Z_dmxChannel;
         light.dmxUniverse = P_dmxUniverse = Z_dmxUniverse;
@@ -213,6 +216,7 @@ public class DMXListItem
         try{
         var so = new SerializedObject(light);
         so.FindProperty("enableDMXChannels").boolValue = P_enableDMXChannels;
+        so.FindProperty("enableFineChannels").boolValue = P_enableFineChannels;
         so.FindProperty("fixtureID").intValue = P_fixtureID;
         so.FindProperty("dmxChannel").intValue = P_dmxChannel;
         so.FindProperty("useLegacySectorMode").boolValue = P_useLegacySectorMode;
@@ -246,6 +250,7 @@ public class DMXListItem
         #pragma warning restore 0618 //suppressing obsoletion warnings
 #endif
         light.enableDMXChannels = Z_enableDMXChannels = P_enableDMXChannels;
+        light.enableFineChannels = Z_enableFineChannels = P_enableFineChannels;
         light.fixtureID = Z_fixtureID = P_fixtureID;
         light.dmxChannel = Z_dmxChannel = P_dmxChannel;
         light.dmxUniverse = Z_dmxUniverse = P_dmxUniverse;
@@ -1461,6 +1466,29 @@ public class VRSL_ManagerWindow : EditorWindow {
 
      }
 
+    static void MassApplyFineChannels(bool state)
+    {
+        for(int i = 0; i < universes.Length; i++)
+        {
+            if(universes[i] == null)
+            {
+                continue;
+            }
+            foreach(DMXListItem fixture in universes[i])
+            {
+                if(fixture == null)
+                {
+                    continue;
+                }
+                if(fixture.light == null)
+                {
+                    continue;
+                }
+                fixture.P_enableFineChannels = state;
+            }
+        }
+    }
+
     static void MassApplyPTRange(bool isPan)
     {
         for(int i = 0; i < universes.Length; i++)
@@ -2091,6 +2119,7 @@ public class VRSL_ManagerWindow : EditorWindow {
             return;
         }
         copyTofixture.P_enableDMXChannels = copyFromfixture.P_enableDMXChannels;
+        copyTofixture.P_enableFineChannels = copyFromfixture.P_enableFineChannels;
         copyTofixture.P_coneLength = copyFromfixture.P_coneLength;
         copyTofixture.P_coneWidth = copyFromfixture.P_coneWidth;
         copyTofixture.P_enableAutoSpin = copyFromfixture.P_enableAutoSpin;
@@ -2743,6 +2772,26 @@ public class VRSL_ManagerWindow : EditorWindow {
                     Repaint();   
                 }
                 
+                EditorGUILayout.EndHorizontal();
+
+                EditorGUILayout.BeginHorizontal("box");
+                EditorGUILayout.LabelField(Label("Fine Channel Support", "Fine channel support allows your fixtures to read additional fine channels for pan and tilt, which can increase the precision of the movement of your fixtures. This is especially useful for fixtures with a large pan/tilt range, such as moving heads with a 540 degree pan range. However, enabling this can cause jitter if your input data is not stable enough, so use with caution!"), LongLabel(0), GUILayout.MaxWidth(400f));
+                if (GUILayout.Button(Label("Enable on all Fixtures", "Enables the use of fine channels for pan and tilt on all fixtures in the scene. Can increase jitter if your input data is not stable enough."), GUILayout.MaxWidth(230f)))
+                {
+                    MassApplyFineChannels(true);
+                    Debug.Log("VRSL Control Panel: Enabling Fine Channel Support on All Fixtures!");
+                    ApplyChangesToFixtures(true, false, false);
+                    ResetItems(false);
+                    Repaint();   
+                }
+                if (GUILayout.Button(Label("Disable on all Fixtures", "Disables the use of fine channels for pan and tilt on all fixtures in the scene. Can reduce jitter if your input data is not stable enough."), GUILayout.MaxWidth(230f)))
+                {
+                    MassApplyFineChannels(false);
+                    Debug.Log("VRSL Control Panel: Disabling Fine Channel Support on All Fixtures!");
+                    ApplyChangesToFixtures(true, false, false);
+                    ResetItems(false);
+                    Repaint();   
+                }
                 EditorGUILayout.EndHorizontal();
 
 
@@ -3889,6 +3938,7 @@ public class VRSL_ManagerWindow : EditorWindow {
                                 GUILayout.Label("DMX Settings", SecLabel());
                                 GUILayout.Space(8.0f);
                                 fixture.P_enableDMXChannels = EditorGUILayout.Toggle("Enable DMX", fixture.P_enableDMXChannels);
+                                fixture.P_enableFineChannels = EditorGUILayout.Toggle("Enable Fine Channels", fixture.P_enableFineChannels);
                                 fixture.P_nineUniverseMode = EditorGUILayout.Toggle("Extended Universe Mode", fixture.P_nineUniverseMode);
                                 fixture.P_fixtureID = EditorGUILayout.IntField("Fixture ID", fixture.P_fixtureID, GUILayout.MaxWidth(sectionWidth - 10));
                                 fixture.P_useLegacySectorMode = EditorGUILayout.Toggle("Legacy Sector Mode",fixture.P_useLegacySectorMode);
