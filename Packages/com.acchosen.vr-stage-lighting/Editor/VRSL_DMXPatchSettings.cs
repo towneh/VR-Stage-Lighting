@@ -519,7 +519,7 @@ namespace VRSL.EditorScripts
             }
             return hasLocalPanel;
         }
-#if !UNITY_EDITOR_LINUX && !UNITY_ANDROID && !UNITY_IOS
+#if UNITY_EDITOR_WIN && !UNITY_6000_0_OR_NEWER
         private void OnPrintPage(object sender, PrintPageEventArgs ev)
         {   
                 pdfPageCount++;
