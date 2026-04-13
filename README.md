@@ -65,6 +65,7 @@ This repository comes with an example recorded video in an example scene of the 
 ### Get the Artnet Gridnode
 
 #### While VRSL's lights and shaders are open source, Artnet Grid Node is not.
+However, there is an open source alternative called [HNode](https://github.com/Happyrobot33/HNode) that you can find here!
 
 [Purchasing a copy](https://gumroad.com/l/xYaPu) of the VR Stage Lighting Grid Node will help in the development of both the node grid and the VRSL framework!
 
