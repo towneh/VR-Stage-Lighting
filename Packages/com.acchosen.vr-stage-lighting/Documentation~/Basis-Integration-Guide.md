@@ -106,7 +106,7 @@ Drag **`Packages/VR Stage Lighting/Runtime/Prefabs/GPU/VRSL-AudioLink-Mover-Spot
 - A **Spot Light** (disabled — the GPU pipeline owns scene illumination)
 - **`AudioLink Realtime Light`** pre-configured with `enablePanTilt = true`, `panTransform → MoverLightMesh-LampFixture-Base`, `tiltTransform → MoverLightMesh-LampFixture-Head`
 
-> **Note:** This is a standalone prefab, not a variant — changes to the original `VRSL-AudioLink-Mover-Spotlight` mesh or materials will not propagate automatically. The prefab will show a "missing scripts" warning on the two UdonSharp components inherited from the base; this is expected in non-VRChat projects and does not affect runtime behaviour.
+> **Note:** This is a standalone prefab, not a variant — changes to the original `VRSL-AudioLink-Mover-Spotlight` mesh or materials will not propagate automatically.
 
 Adjust the following per fixture or in bulk via multi-select:
 
