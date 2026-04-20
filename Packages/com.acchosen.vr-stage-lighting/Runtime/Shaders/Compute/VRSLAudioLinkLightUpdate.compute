@@ -1,0 +1,95 @@
+#pragma kernel UpdateLights
+
+#include "../Shared/VRSLLightingLibrary.hlsl"
+
+// AudioLink texture — set globally each frame by the AudioLink system as _AudioTexture.
+// Accessed via Load() (integer coords) to guarantee point sampling; bilinear would
+// produce incorrect values since each texel encodes a distinct data channel/pixel.
+Texture2D<float4> _AudioTexture;
+
+// ── AudioLink texture pixel coordinates (from AudioLink.cginc) ────────────────
+// Amplitude bands: x = delay (0..127, 0=most recent), y = band (0=bass..3=treble)
+#define AL_BAND_X_MAX 127
+#define AL_BAND_Y_MAX 3
+// Theme colors: x = color index (0..3), y = 23
+#define AL_THEME_ROW 23
+// Color chord strip: y = 25, x = 0..127 (use x=0 for a single representative color)
+#define AL_CCLIGHTS_ROW 25
+
+// ── Buffers ───────────────────────────────────────────────────────────────────
+StructuredBuffer<VRSLALFixtureConfig>  _ALFixtureConfigs;
+RWStructuredBuffer<VRSLLightData>      _LightData;
+uint                                    _FixtureCount;
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+// Rodrigues rotation — used if the caller ever pre-rotates direction on the GPU.
+// Currently unused in the AudioLink path (direction is CPU-supplied per-frame),
+// kept here for parity with VRSLDMXLightUpdate.compute.
+float3 RotateAroundAxis(float3 v, float3 axis, float angleDeg)
+{
+    float rad = radians(angleDeg);
+    float c   = cos(rad);
+    float s   = sin(rad);
+    return v * c + cross(axis, v) * s + axis * dot(axis, v) * (1.0 - c);
+}
+
+// Sample a color from the AudioLink texture based on colorMode:
+//   0 = emission (handled by caller)
+//   1–4 = AudioLink theme colors 0–3 (row 23)
+//   5 = Color Chord representative pixel (row 25, x=0)
+float3 SampleAudioLinkColor(int colorMode)
+{
+    if (colorMode >= 1 && colorMode <= 4)
+        return _AudioTexture.Load(int3(colorMode - 1, AL_THEME_ROW, 0)).rgb;
+    // colorMode == 5 — Color Chord
+    return _AudioTexture.Load(int3(0, AL_CCLIGHTS_ROW, 0)).rgb;
+}
+
+// ── Kernel: one thread per fixture ───────────────────────────────────────────
+[numthreads(64, 1, 1)]
+void UpdateLights(uint3 id : SV_DispatchThreadID)
+{
+    uint idx = id.x;
+    if (idx >= _FixtureCount) return;
+
+    VRSLALFixtureConfig cfg = _ALFixtureConfigs[idx];
+
+    int   band         = (int)clamp(cfg.alParams.x, 0, AL_BAND_Y_MAX);
+    int   delay        = (int)clamp(cfg.alParams.y, 0, AL_BAND_X_MAX);
+    float bandMult     = cfg.alParams.z;
+    int   colorMode    = (int)round(cfg.alParams.w);
+
+    float maxIntensity   = cfg.intensityParams.x;
+    float finalIntensity = cfg.intensityParams.y;
+
+    // ── Amplitude ─────────────────────────────────────────────────────────────
+    // x=delay, y=band matches the ALPASS_AUDIOLINK layout in AudioLink.cginc
+    float amplitude = _AudioTexture.Load(int3(delay, band, 0)).r;
+    amplitude = saturate(amplitude * bandMult);
+
+    // ── Color ─────────────────────────────────────────────────────────────────
+    float3 color = (colorMode == 0)
+        ? cfg.emissionColor.rgb
+        : SampleAudioLinkColor(colorMode);
+
+    float combinedIntensity = amplitude * maxIntensity * finalIntensity;
+
+    // ── Direction ─────────────────────────────────────────────────────────────
+    // Supplied per-frame from CPU (read from tiltTransform.forward or light transform).
+    // No GPU-side rotation needed — the animation system already rotated the transforms.
+    float3 dir      = normalize(cfg.forwardAndType.xyz);
+    int    lightType = (int)round(cfg.forwardAndType.w);
+
+    // ── Spot cosines ──────────────────────────────────────────────────────────
+    float innerCos = cos(radians(cfg.spotAngles.x));
+    float outerCos = cos(radians(cfg.spotAngles.y));
+
+    // ── Write output ──────────────────────────────────────────────────────────
+    VRSLLightData light;
+    light.positionAndRange  = float4(cfg.positionAndRange.xyz, cfg.positionAndRange.w);
+    light.directionAndType  = float4(dir, (float)lightType);
+    light.colorAndIntensity = float4(color, combinedIntensity);
+    light.spotCosines       = float4(innerCos, outerCos,
+                                     combinedIntensity > 0.001 ? 1.0 : 0.0, 0.0);
+    _LightData[idx] = light;
+}
