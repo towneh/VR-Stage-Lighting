@@ -75,4 +75,22 @@ float3 VRSL_EvaluateLight(VRSLLightData light, float3 posWS, float3 normalWS)
            * distAtten * spotAtten * NdotL;
 }
 
+// ──────────────────────────────────────────────────────────────────────────────
+// AudioLink GPU light path — per-fixture config written by VRSL_AudioLinkGPULightManager
+// Must exactly match VRSLALFixtureConfig in VRSL_AudioLinkGPULightManager.cs
+// ──────────────────────────────────────────────────────────────────────────────
+struct VRSLALFixtureConfig
+{
+    float4 positionAndRange;  // xyz = world pos (updated per-frame), w = range
+    float4 forwardAndType;    // xyz = world forward (from tiltTransform or light, per-frame),
+                              // w = light type (0=spot, 1=point)
+    float4 intensityParams;   // x = maxIntensity, y = finalIntensity, z = unused, w = unused
+    float4 spotAngles;        // x = inner half-angle (deg), y = outer half-angle (deg),
+                              // z = unused, w = unused
+    float4 alParams;          // x = band (0–3), y = delay (0–127), z = bandMultiplier,
+                              // w = colorMode (0=emission,1–4=theme0–3,5=colorChord)
+    float4 emissionColor;     // xyz = linear RGB (used when colorMode == 0), w = unused
+    float4 reserved;          // future use
+};
+
 #endif // VRSL_LIGHTING_LIBRARY_INCLUDED
