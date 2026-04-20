@@ -1,6 +1,6 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
---- !u!1001 &100100000
+--- !u!1001 &7823649120348756293
 PrefabInstance:
   m_ObjectHideFlags: 0
   serializedVersion: 2
@@ -19,16 +19,16 @@ PrefabInstance:
     m_AddedComponents:
     - m_Transform: {fileID: 8370683084096826084, guid: 2aa50be2d32099842af2903a918a56f7,
         type: 3}
-      m_AddedObject: {fileID: 1000001}
+      m_AddedObject: {fileID: 4912837401928374651}
     - m_Transform: {fileID: 8370683084096826084, guid: 2aa50be2d32099842af2903a918a56f7,
         type: 3}
-      m_AddedObject: {fileID: 1000002}
+      m_AddedObject: {fileID: 3047281659037462819}
   m_SourcePrefab: {fileID: 100100000, guid: 2aa50be2d32099842af2903a918a56f7, type: 3}
---- !u!108 &1000001
+--- !u!108 &4912837401928374651
 Light:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 100100000}
+  m_PrefabInstance: {fileID: 7823649120348756293}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 8370683084096826086, guid: 2aa50be2d32099842af2903a918a56f7,
     type: 3}
@@ -63,11 +63,11 @@ Light:
   m_UseColorTemperature: 0
   m_ShadowRadius: 0
   m_ShadowAngle: 0
---- !u!114 &1000002
+--- !u!114 &3047281659037462819
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 100100000}
+  m_PrefabInstance: {fileID: 7823649120348756293}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 8370683084096826086, guid: 2aa50be2d32099842af2903a918a56f7,
     type: 3}
@@ -81,7 +81,7 @@ MonoBehaviour:
   bandMultiplier: 1
   colorMode: 0
   emissionColor: {r: 1, g: 1, b: 1, a: 1}
-  realtimeLight: {fileID: 1000001}
+  realtimeLight: {fileID: 4912837401928374651}
   maxIntensity: 10
   finalIntensity: 1
   enablePanTilt: 1
