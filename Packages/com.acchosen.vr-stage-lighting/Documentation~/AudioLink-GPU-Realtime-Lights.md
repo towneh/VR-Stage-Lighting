@@ -258,11 +258,11 @@ Open the URP Renderer asset. Under **Renderer Features**, add **`VRSLAudioLinkRe
 
 ### Scene Setup
 
-**Option A — Use the Manager prefab + Editor utility (recommended)**
+**Option A — Use the included prefabs (recommended for new scenes)**
 
 Drag **`Packages/VR Stage Lighting/Runtime/Prefabs/GPU/VRSL-AudioLink-GPU-Manager`** into the scene. Both the Compute Shader and Lighting Shader fields are pre-assigned.
 
-For fixtures, place `VRSL-AudioLink-Mover-Spotlight` instances as normal, then run the Editor utility below.
+For fixtures, drag **`Packages/VR Stage Lighting/Runtime/Prefabs/GPU/VRSL-AudioLink-Mover-Spotlight-GPU`** for each fixture position. This standalone prefab contains the full mesh hierarchy with a pre-configured `Light` and `AudioLink Realtime Light` component. Note: this prefab will show a "missing scripts" warning on the UdonSharp components in non-VRChat projects — this is expected and does not affect runtime behaviour.
 
 **Option B — Migrate existing mover instances with the Editor utility**
 
