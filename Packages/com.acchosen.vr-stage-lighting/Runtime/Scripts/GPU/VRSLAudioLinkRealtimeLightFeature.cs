@@ -147,18 +147,13 @@ namespace VRSL
             };
         }
 
-        public override void SetupRenderPasses(ScriptableRenderer renderer, in RenderingData renderingData)
-        {
-            // Request the depth normals prepass so _CameraNormalsTexture is populated.
-            // In Unity 6 URP there is no standalone Depth Normals Prepass toggle in the
-            // renderer asset Inspector — the prepass is activated automatically when a
-            // renderer feature declares this requirement here.
-            _lightingPass.ConfigureInput(ScriptableRenderPassInput.Normal | ScriptableRenderPassInput.Depth);
-        }
-
         public override void AddRenderPasses(ScriptableRenderer renderer, ref RenderingData renderingData)
         {
             if (VRSL_AudioLinkGPULightManager.Instance == null) return;
+            // Request the depth normals prepass so _CameraNormalsTexture is populated.
+            // In Unity 6 URP the prepass has no Inspector toggle — it activates when a
+            // renderer feature declares this requirement before enqueueing its pass.
+            _lightingPass.ConfigureInput(ScriptableRenderPassInput.Normal | ScriptableRenderPassInput.Depth);
             renderer.EnqueuePass(_computePass);
             renderer.EnqueuePass(_lightingPass);
         }
