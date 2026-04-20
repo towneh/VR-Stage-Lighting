@@ -98,15 +98,38 @@ The volumetric path excels at visual effects: beam shafts, gobo projections, fix
 
 ---
 
-## The Migration Constraint: Staying on the GPU
+## Why Unity Lights Don't Scale: The CPU Architecture and Shadow Cost Problem
+
+### The Per-Frame CPU Bottleneck
 
 The most important constraint going into this work is stated directly: **the existing architecture never leaves the GPU for per-fixture work, and the new path must not either.**
 
-Unity's `Light` component — the standard answer for scene illumination — is a CPU-only construct. Its `color`, `intensity`, and `range` properties must be written from the main thread each frame. Doing so naively would mean reading the DMX textures back to CPU (introducing GPU pipeline stalls or async latency), decoding the values in C#, and writing to each `Light` in a sequential loop. This completely abandons VRSL's GPU-first architecture and scales poorly.
+Unity's `Light` component — the standard answer for scene illumination — is a CPU-only construct. Its `color`, `intensity`, and `range` properties must be written from the main thread each frame. Doing so naively would mean reading the DMX textures back to CPU (introducing GPU pipeline stalls or async latency), decoding the values in C#, and writing to each `Light` in a sequential loop. With 100+ fixtures this becomes a sequential bottleneck that completely abandons VRSL's GPU-first architecture.
 
-The forward requirement, then, is not simply "make realtime lights work" but specifically: **decode DMX on the GPU, produce light data on the GPU, and apply that light data to scene geometry on the GPU, without routing any per-frame data through the CPU.**
+A softer version of this using `AsyncGPUReadback` avoids GPU stalls and keeps the readback off the critical path, but at the cost of 1–2 frames of latency. Crucially, even with the latency accepted, this only solves half the problem.
 
-This rules out `Light` components at runtime and points toward a custom render pipeline integration.
+### The Shadow Map Rendering Wall
+
+The deeper cost of using Unity `Light` components is not the CPU update loop — it is shadow map generation. URP renders the entire scene geometry **once per shadow-casting light** into a shadow atlas every frame. At scale this becomes the dominant cost, dwarfing everything else in the pipeline:
+
+| Shadow-casting spot lights | Estimated shadow pass cost | 60 fps viability |
+|---|---|---|
+| 0 | baseline | ✅ no overhead |
+| 4 | +2–5 ms | ✅ comfortable |
+| 8–12 | +6–15 ms | ⚠️ borderline on mid-range GPU |
+| 100 | ~100 full scene redraws | ❌ not feasible |
+
+Point lights are six times worse than spot lights, requiring one shadow map pass per cubemap face. Even with frustum culling helping on a sparse scene, 100 shadow-casting lights would exhaust a 60 fps frame budget before a single opaque pixel of the actual scene renders.
+
+For reference, the rest of the GPU pipeline at 100 lights is fast: the compute dispatch decoding all 100 fixtures from the DMX textures takes well under 1 ms, and the fullscreen additive lighting pass — which evaluates all 100 lights per pixel — runs at approximately 1–3 ms at 1080p. The shadow maps are the wall.
+
+### What This Means for the Design
+
+The forward requirement is therefore not simply "make realtime lights work" but specifically: **decode DMX on the GPU, produce light data on the GPU, and apply that light data to scene geometry on the GPU, without routing any per-frame data through the CPU** — and without incurring per-light shadow map passes for the majority of fixtures.
+
+Shadow casting remains an open problem. The practical path, if shadows are needed, is a `castShadows` flag per fixture driving a small pool of real Unity `Light` components (via async readback) capped at around 4–8 shadow-casting spots. Wash lights, strips, and blinders — which make up the bulk of a large rig — produce no visible shadow benefit and should never be in that pool. The fullscreen additive pass handles their illumination contribution with zero shadow overhead.
+
+The GPU-driven pipeline described below addresses the illumination problem completely. Shadow casting at scale is a separate, harder problem and is noted under Known Limitations.
 
 ---
 
