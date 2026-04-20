@@ -648,22 +648,28 @@ namespace VRSL
         public void _CheckDepthLightStatus()
         {
 
-            foreach(Material mat in volumetricMaterials)
+            if(volumetricMaterials != null)
             {
-                mat.SetInt("_PotatoMode", VolumetricNoise ? 0 : 1);
-                mat.SetInt("_UseDepthLight", RequireDepthLight ? 1 : 0);
-                if(mat.HasProperty("_UseDepthLight")){
-                SetKeyword(mat, "_USE_DEPTH_LIGHT", (Mathf.FloorToInt(mat.GetInt("_UseDepthLight"))) == 1 ? true : false);}
-                if(mat.HasProperty("_MAGIC_NOISE_ON_MED")){
-                SetKeyword(mat, "_MAGIC_NOISE_ON_MED", (Mathf.FloorToInt(mat.GetInt("_MAGIC_NOISE_ON_MED"))) == 1 ? true : false);}
-                if(mat.HasProperty("_MAGIC_NOISE_ON_HIGH")){
-                SetKeyword(mat, "_MAGIC_NOISE_ON_HIGH", (Mathf.FloorToInt(mat.GetInt("_MAGIC_NOISE_ON_HIGH"))) == 1 ? true : false);}
-                if(mat.HasProperty("_PotatoMode")){
-                SetKeyword(mat, "_POTATO_MODE_ON", (Mathf.FloorToInt(mat.GetInt("_PotatoMode"))) == 1 ? true : false);}
+                foreach(Material mat in volumetricMaterials)
+                {
+                    mat.SetInt("_PotatoMode", VolumetricNoise ? 0 : 1);
+                    mat.SetInt("_UseDepthLight", RequireDepthLight ? 1 : 0);
+                    if(mat.HasProperty("_UseDepthLight")){
+                    SetKeyword(mat, "_USE_DEPTH_LIGHT", (Mathf.FloorToInt(mat.GetInt("_UseDepthLight"))) == 1 ? true : false);}
+                    if(mat.HasProperty("_MAGIC_NOISE_ON_MED")){
+                    SetKeyword(mat, "_MAGIC_NOISE_ON_MED", (Mathf.FloorToInt(mat.GetInt("_MAGIC_NOISE_ON_MED"))) == 1 ? true : false);}
+                    if(mat.HasProperty("_MAGIC_NOISE_ON_HIGH")){
+                    SetKeyword(mat, "_MAGIC_NOISE_ON_HIGH", (Mathf.FloorToInt(mat.GetInt("_MAGIC_NOISE_ON_HIGH"))) == 1 ? true : false);}
+                    if(mat.HasProperty("_PotatoMode")){
+                    SetKeyword(mat, "_POTATO_MODE_ON", (Mathf.FloorToInt(mat.GetInt("_PotatoMode"))) == 1 ? true : false);}
+                }
             }
-            foreach(Material mat in projectionMaterials)
+            if(projectionMaterials != null)
             {
-                mat.SetInt("_UseDepthLight", RequireDepthLight ? 1 : 0);
+                foreach(Material mat in projectionMaterials)
+                {
+                    mat.SetInt("_UseDepthLight", RequireDepthLight ? 1 : 0);
+                }
             }
             if(fixtureMaterials != null)
             {
