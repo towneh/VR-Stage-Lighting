@@ -216,6 +216,8 @@ The renderer feature uses the same Unity 6 Render Graph API (`RecordRenderGraph`
 
 The `PassData` class per-pass pattern, `rg.ImportBuffer`, `rg.ImportTexture`, and `AccessFlags` declarations are identical in structure to the DMX feature. The AudioLink texture RTHandle is imported as `AccessFlags.Read`; the light data buffer as `AccessFlags.Write` in the compute pass and `AccessFlags.Read` in the lighting pass.
 
+The lighting pass calls `cmd.SetGlobalBuffer` and `cmd.SetGlobalInteger` to publish `_VRSLLights` and `_VRSLLightCount` for the fragment shader. In Unity 6 URP the native render pass compiler prohibits global state mutation from raster passes by default. The builder must declare `builder.AllowGlobalStateModification(true)` before `SetRenderFunc`, or Unity throws `InvalidOperationException: Modifying global state from this command buffer is not allowed`. `ConfigureInput` must be called in `AddRenderPasses`, not `SetupRenderPasses` — the latter override does not exist on `ScriptableRendererFeature` in this Unity 6 URP version.
+
 ### Emission Color Gamma Handling
 
 Emission colors in Unity are authored in gamma space via the color picker but must be in linear space for physically correct lighting math in URP. `BuildConfig` calls `f.emissionColor.linear` before packing into the `emissionColor` Vector4 field. This matches the convention used by URP's own light color pipeline. AudioLink theme and color chord colors are already linear — they are set by the AudioLink system in linear space and should not be converted again.
@@ -255,6 +257,18 @@ These are shared requirements with `VRSLRealtimeLightFeature`. If the DMX render
 Open the URP Renderer asset. Under **Renderer Features**, add **`VRSLAudioLinkRealtimeLightFeature`**.
 
 ### Scene Setup
+
+**Option A — Use the included prefabs (recommended)**
+
+Drag **`Packages/VR Stage Lighting/Runtime/Prefabs/GPU/VRSL-AudioLink-GPU-Manager`** into the scene. Both the Compute Shader and Lighting Shader fields are pre-assigned.
+
+For fixtures, use **`Packages/VR Stage Lighting/Runtime/Prefabs/GPU/VRSL-AudioLink-Mover-Spotlight-GPU`** — a prefab variant of the standard AudioLink mover that adds a disabled `Spot Light` and a pre-configured `VRStageLighting_AudioLink_RealtimeLight` with `enablePanTilt = true`, `panTransform` and `tiltTransform` wired to the constraint-based mesh parts.
+
+**Option B — Migrate existing mover instances with the Editor utility**
+
+If the scene already has `VRSL-AudioLink-Mover-Spotlight` instances placed and animated, run **VRSL → Setup AudioLink GPU Realtime Lights in Scene**. The utility scans for the child chain `MoverLightMesh-LampFixture-Base → MoverLightMesh-LampFixture-Head`, adds the required components to each root, and registers all changes under a single Undo group.
+
+**Option C — Manual setup**
 
 1. Add **`VRSL_AudioLinkGPULightManager`** to any persistent scene GameObject. Assign:
 
