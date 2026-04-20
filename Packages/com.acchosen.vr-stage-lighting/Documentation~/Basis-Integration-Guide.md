@@ -57,10 +57,14 @@ Under **Renderer Features** at the bottom of the renderer asset, click **Add Ren
 
 ## Step 3 — Add the Manager to the Scene
 
-### AudioLink path
+### Option A — Use the prefab (recommended)
+
+Drag **`Packages/VR Stage Lighting/Runtime/Prefabs/GPU/VRSL-AudioLink-GPU-Manager`** into the scene hierarchy. Both the **Compute Shader** (`VRSLAudioLinkLightUpdate`) and **Lighting Shader** (`Hidden/VRSL/DeferredLighting`) are pre-assigned — no further Inspector work needed.
+
+### Option B — Manual setup
 
 1. Create an empty GameObject in the scene (e.g. `VRSL_Manager`)
-2. Add component **`AudioLink GPU Light Manager`** (listed under VRSL in the component picker, or search "AudioLink GPU")
+2. Add component **`AudioLink GPU Light Manager`** (search "AudioLink GPU" in the component picker)
 3. Assign in the Inspector:
 
    | Field | Value |
@@ -87,15 +91,76 @@ Under **Renderer Features** at the bottom of the renderer asset, click **Add Ren
 
 ## Step 4 — Per-Fixture Setup
 
-For each fixture that should contribute genuine scene illumination, add two components:
+Each fixture that should contribute genuine scene illumination needs a Unity `Light` component and a `VRStageLighting_AudioLink_RealtimeLight` component on its root GameObject, with `tiltTransform` pointing to the mesh part whose world-space forward represents the beam direction.
 
-1. A Unity **`Light`** component (Spot or Point). Configure Range and Spot Angle to match the fixture. This component is read once at config time — it is not driven at runtime.
+There are three paths depending on your starting point.
 
-2. **`VRStageLighting_AudioLink_RealtimeLight`** (AudioLink path) or **`VRStageLighting_DMX_RealtimeLight`** (DMX path).
+---
 
-For moving-head fixtures, assign `panTransform` (the transform that rotates on Y for pan) and `tiltTransform` (the transform that rotates on X for tilt, and whose world-space forward becomes the GPU light direction). Enable `enablePanTilt`.
+### Path A — New scene, placing fixtures fresh
 
-See `AudioLink-GPU-Realtime-Lights.md` or `URP-Realtime-Lights.md` for full field reference and tuning guidance.
+Use the GPU-ready prefab variant instead of the standard AudioLink mover.
+
+Drag **`Packages/VR Stage Lighting/Runtime/Prefabs/GPU/VRSL-AudioLink-Mover-Spotlight-GPU`** into the scene for each fixture position.
+
+This prefab variant inherits the full mesh hierarchy from `VRSL-AudioLink-Mover-Spotlight` (constraints, materials, animation targets) and adds:
+
+- A **Spot Light** (disabled — the GPU pipeline owns scene illumination, not Unity's light pass)
+- **`AudioLink Realtime Light`** component pre-configured:
+  - `enablePanTilt = true`
+  - `panTransform` → `MoverLightMesh-LampFixture-Base` (world position source)
+  - `tiltTransform` → `MoverLightMesh-LampFixture-Head` (beam direction source — updated every frame by the AimConstraint as animation/Cinemachine moves the aim target)
+
+Adjust the following per fixture or in bulk via multi-select:
+
+| Field | Where | Notes |
+|-------|-------|-------|
+| Spot Angle | Light component | Match to the fixture's physical beam angle |
+| Range | Light component | Match to scene scale |
+| Band | AudioLink Realtime Light | Frequency band to react to (Bass/LowMid/HighMid/Treble) |
+| Max Intensity | AudioLink Realtime Light | Peak illumination in lux at full amplitude — tune per scene |
+| Color Mode | AudioLink Realtime Light | Emission (fixed), ThemeColor0–3, or ColorChord |
+
+---
+
+### Path B — Migrating existing `VRSL-AudioLink-Mover-Spotlight` instances
+
+If your scene already has the standard AudioLink mover prefab instances placed and animated, use the one-shot Editor utility rather than replacing them.
+
+1. Open the scene in Unity
+2. Run **VRSL → Setup AudioLink GPU Realtime Lights in Scene** from the menu bar
+
+The utility scans every GameObject in the scene for the child chain `MoverLightMesh-LampFixture-Base → MoverLightMesh-LampFixture-Head`, then for each fixture found:
+
+- Adds a disabled **Spot Light** (range 20, spotAngle 45°) to the root
+- Adds **`AudioLink Realtime Light`** with `enablePanTilt = true`, `panTransform → Base`, `tiltTransform → Head`
+- Skips any fixture already configured
+- Registers everything under a single Undo group (Ctrl+Z reverts all changes)
+
+After the utility runs, adjust Spot Angle, Range, Band, Max Intensity, and Color Mode in bulk via multi-select as described in Path A above.
+
+> **Why the Light is disabled:** The GPU deferred lighting pass handles scene illumination. Leaving the Unity Light enabled would cause the fixture to contribute twice — once via the GPU pass and once via Unity's standard light rendering.
+
+---
+
+### Path C — Manual per-fixture setup
+
+For fixtures not based on the standard VRSL mover hierarchy, or for fine-grained control:
+
+1. Add a Unity **`Light`** component (Spot or Point) to the fixture root. Configure Range and Spot Angle to match the fixture. Set the Light to **disabled**.
+
+2. Add **`AudioLink Realtime Light`** (listed under VRSL in the component picker, or search "AudioLink Realtime").
+
+3. Assign in the Inspector:
+
+   | Field | Value |
+   |-------|-------|
+   | Realtime Light | The Light component on this GameObject |
+   | Enable Pan Tilt | Checked for moving-head fixtures |
+   | Pan Transform | The transform that provides world position (typically the yoke/base) |
+   | Tilt Transform | The transform whose `forward` is the beam direction — updated each frame by animation, constraints, or script |
+
+   For static fixtures, leave Pan/Tilt unchecked — the manager reads position and forward from the Light component's transform directly.
 
 ---
 
@@ -112,3 +177,9 @@ Expected. Setting Depth Priming Mode to Disabled removes a spurious depth prepas
 
 **Scene camera uses a different renderer asset**
 Basis uses multiple renderer assets for different contexts (Desktop, Quest, Headless). The renderer feature must be added to whichever asset the active camera references. For a desktop scene this is `DesktopRenderer.asset`; confirm via the Camera component's **Renderer** field or the URP asset's renderer list.
+
+**Fixtures not found by the setup utility**
+The utility identifies movers by the child chain `MoverLightMesh-LampFixture-Base → MoverLightMesh-LampFixture-Head`. If your fixtures use a different hierarchy (custom prefabs, renamed GameObjects), use Path C above to set up components manually.
+
+**No illumination visible at runtime**
+Confirm AudioLink is active in the scene and `_AudioTexture` is being set as a global. The manager logs no warning if AudioLink is absent — it simply finds no texture and the compute pass skips. Check that the `VRSL_Manager` GameObject is active and the Compute Shader and Lighting Shader fields are assigned.
