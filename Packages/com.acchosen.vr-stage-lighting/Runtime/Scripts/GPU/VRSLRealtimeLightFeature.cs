@@ -137,6 +137,7 @@ namespace VRSL
                 builder.UseBuffer( d.lightDataBuffer, AccessFlags.Read);
                 builder.UseTexture(d.depthTexture,    AccessFlags.Read);
                 builder.UseTexture(d.normalsTexture,  AccessFlags.Read);
+                builder.AllowGlobalStateModification(true);
 
                 builder.SetRenderFunc((PassData p, RasterGraphContext ctx) =>
                 {
