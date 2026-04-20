@@ -16,13 +16,7 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents:
-    - m_Transform: {fileID: 8370683084096826084, guid: 2aa50be2d32099842af2903a918a56f7,
-        type: 3}
-      m_AddedObject: {fileID: 4912837401928374651}
-    - m_Transform: {fileID: 8370683084096826084, guid: 2aa50be2d32099842af2903a918a56f7,
-        type: 3}
-      m_AddedObject: {fileID: 3047281659037462819}
+    m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 2aa50be2d32099842af2903a918a56f7, type: 3}
 --- !u!108 &4912837401928374651
 Light:
