@@ -863,6 +863,7 @@ namespace VRSL
 
         public void _CheckAudioLink()
         {
+            if(AudioLink_CRTs == null || AudioLink_CRTs.Length == 0) return;
             if(isUsingAudioLink)
             {
                 EnableCRTS(AudioLink_CRTs);
