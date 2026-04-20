@@ -99,19 +99,11 @@ There are three paths depending on your starting point.
 
 ### Path A — New scene, placing fixtures fresh
 
-Use the GPU-ready prefab variant instead of the standard AudioLink mover.
+Place `VRSL-AudioLink-Mover-Spotlight` instances as normal, then immediately run **VRSL → Setup AudioLink GPU Realtime Lights in Scene** (see Path B). The utility adds the required GPU components in one pass regardless of whether the fixtures were just placed or have been in the scene for some time.
 
-Drag **`Packages/VR Stage Lighting/Runtime/Prefabs/GPU/VRSL-AudioLink-Mover-Spotlight-GPU`** into the scene for each fixture position.
+> **Note:** The AudioLink mover prefabs reference UdonSharp scripts that only resolve in a VRChat SDK project. In a Basis project these will show a "missing scripts" warning — this is expected and does not affect the mesh, constraints, animation, or the GPU realtime light components added by the utility.
 
-This prefab variant inherits the full mesh hierarchy from `VRSL-AudioLink-Mover-Spotlight` (constraints, materials, animation targets) and adds:
-
-- A **Spot Light** (disabled — the GPU pipeline owns scene illumination, not Unity's light pass)
-- **`AudioLink Realtime Light`** component pre-configured:
-  - `enablePanTilt = true`
-  - `panTransform` → `MoverLightMesh-LampFixture-Base` (world position source)
-  - `tiltTransform` → `MoverLightMesh-LampFixture-Head` (beam direction source — updated every frame by the AimConstraint as animation/Cinemachine moves the aim target)
-
-Adjust the following per fixture or in bulk via multi-select:
+Adjust the following per fixture or in bulk via multi-select after running the utility:
 
 | Field | Where | Notes |
 |-------|-------|-------|
