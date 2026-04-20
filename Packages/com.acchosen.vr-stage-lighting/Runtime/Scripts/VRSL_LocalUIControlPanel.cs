@@ -652,6 +652,7 @@ namespace VRSL
             {
                 foreach(Material mat in volumetricMaterials)
                 {
+                    if(mat == null) continue;
                     mat.SetInt("_PotatoMode", VolumetricNoise ? 0 : 1);
                     mat.SetInt("_UseDepthLight", RequireDepthLight ? 1 : 0);
                     if(mat.HasProperty("_UseDepthLight")){
@@ -668,6 +669,7 @@ namespace VRSL
             {
                 foreach(Material mat in projectionMaterials)
                 {
+                    if(mat == null) continue;
                     mat.SetInt("_UseDepthLight", RequireDepthLight ? 1 : 0);
                 }
             }
