@@ -4,7 +4,7 @@ using UnityEditor.SceneManagement;
 using UnityEngine;
 using VRSL;
 
-namespace VRSL.Editor
+namespace VRSL.EditorScripts
 {
     /// <summary>
     /// One-shot Editor utility that wires up the AudioLink GPU realtime light
