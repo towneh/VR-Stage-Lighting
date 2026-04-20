@@ -993,6 +993,7 @@ namespace VRSL
 
         public void _SetLaserIntensity()
         {
+            if(laserSlider == null) return;
             foreach(Material mat in laserMaterials)
             {
                 if(mat != null)
@@ -1000,7 +1001,8 @@ namespace VRSL
                     mat.SetFloat("_UniversalIntensity", Mathf.Lerp(0.0f, laserIntensityMax, laserSlider.value));
                 }
             }
-            laserSliderText.text = Mathf.Round(laserSlider.value * 100.0f).ToString();
+            if(laserSliderText != null)
+                laserSliderText.text = Mathf.Round(laserSlider.value * 100.0f).ToString();
         }
         public void _SetBloomIntensity()
         {
