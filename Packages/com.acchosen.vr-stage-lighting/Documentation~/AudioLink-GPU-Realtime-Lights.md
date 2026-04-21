@@ -121,7 +121,7 @@ AudioLink RenderTexture (_AudioTexture)
     • Write VRSLLightData to RWStructuredBuffer (GPU-written, GPU-read)
          │
          ▼
-  GraphicsBuffer<VRSLLightData>  (persistent, GPU-resident, 64 bytes × N fixtures)
+  GraphicsBuffer<VRSLLightData>  (persistent, GPU-resident, 80 bytes × N fixtures)
          │
          │  imported into render graph as BufferHandle
          ▼
@@ -169,15 +169,15 @@ The `.r` channel is read for amplitude because `AudioLinkLerp` returns the `.r` 
 |-------|----------|
 | `positionAndRange` | xyz = world position (from panTransform or light), w = attenuation range |
 | `forwardAndType` | xyz = world forward direction (from tiltTransform or light, animated), w = light type (0=spot, 1=point) |
-| `intensityParams` | x = maxIntensity, y = finalIntensity, zw = unused |
+| `intensityParams` | x = maxIntensity, y = finalIntensity, z = AudioLink active flag (1 = sample AL amplitude, 0 = static full intensity), w = unused |
 | `spotAngles` | x = inner half-angle (deg), y = outer half-angle (deg), zw = unused |
 | `alParams` | x = band (0–3), y = delay (0–127), z = bandMultiplier, w = colorMode (0–5) |
 | `emissionColor` | xyz = linear RGB (used when colorMode == 0), w = unused |
-| `reserved` | future use |
+| `reserved` | x = cookie array index (−1 = no cookie, 0+ = slice in `_VRSLCookies`), y = cookie spin speed (matches `_SpinSpeed` range −10..10), zw = unused |
 
 The 7×float4 stride matches `VRSLFixtureConfig` intentionally. Future work unifying the two paths into a single buffer can rely on consistent struct sizes.
 
-**VRSLLightData** (64 bytes, 4 × `float4`) — written by the compute shader each frame, read by the fragment shader. This struct is identical to the DMX path and is defined once in `VRSLLightingLibrary.hlsl`.
+**VRSLLightData** (80 bytes, 5 × `float4`) — written by the compute shader each frame, read by the fragment shader. This struct is identical to the DMX path and is defined once in `VRSLLightingLibrary.hlsl`.
 
 **colorMode values:**
 
@@ -283,14 +283,17 @@ If the scene already has `VRSL-AudioLink-Mover-Spotlight` instances placed and a
 
    | Field | Notes |
    |-------|-------|
+   | `enableAudioLink` | When enabled, light intensity is driven by the AudioLink amplitude band. When disabled, the light runs at full `maxIntensity × finalIntensity` regardless of audio — useful for static or manually animated lights in the same scene. |
    | `band` | Frequency band this fixture reacts to (Bass / LowMids / HighMids / Treble) |
    | `delay` | History delay (0 = most recent, 127 = most delayed). Useful for chasing effects. |
    | `bandMultiplier` | Sensitivity multiplier. Increase if the band amplitude is too low at your audio levels. |
    | `colorMode` | Emission (fixed), ThemeColor0–3, or ColorChord |
    | `emissionColor` | Active when colorMode is Emission. Author in HDR for bright fixtures. |
-   | `realtimeLight` | The Unity `Light` component on this fixture. Range and spot angle read at config time. |
+   | `realtimeLight` | The Unity `Light` component on this fixture. Range and spot angle read at config time. The component is automatically **disabled** in `Awake` to prevent URP Forward+ from processing it as a standard additional light alongside the GPU pass (which would cause double illumination). |
    | `maxIntensity` | Peak lux at full amplitude. Tune per scene scale — start around 10–30 for indoor scenes. |
    | `finalIntensity` | User-side intensity cap (0–1). Equivalent to Final Intensity on shader fixtures. |
+   | `cookieTexture` | Optional gobo texture projected onto the light cone, sampled as a greyscale mask (red channel). All cookie textures in the scene are packed into a shared `Texture2DArray` at `RefreshFixtures()` time — any `Texture2D` is accepted and will be scaled to 256×256 RGBA32 internally. |
+   | `cookieSpinSpeed` | Rotation speed for the cookie texture (−10..10, default 0). Matches the **Auto Spin Speed** (`_SpinSpeed`) property on the volumetric shader meshes — negative values spin in reverse. |
    | `enablePanTilt` | Enable for moving-head fixtures. |
    | `panTransform` | The transform rotated on Y for pan (its world position becomes the light origin). |
    | `tiltTransform` | The transform rotated on X for tilt (its world-space forward becomes the light direction). |
@@ -331,9 +334,14 @@ VRSL_AudioLinkGPULightManager.Instance.RefreshFixtures();
 // RefreshFixtures() re-reads all Light properties.
 VRSL_AudioLinkGPULightManager.Instance.RefreshFixtures();
 
-// band, delay, bandMultiplier, colorMode, emissionColor, maxIntensity, finalIntensity
-// are read per-frame in BuildConfig() — changes take effect the next LateUpdate automatically.
-// No manual refresh call is needed for these fields.
+// After changing a fixture's cookieTexture at runtime:
+// RefreshFixtures() rebuilds the Texture2DArray and updates cookie slice indices.
+VRSL_AudioLinkGPULightManager.Instance.RefreshFixtures();
+
+// The following fields are read per-frame in BuildConfig() — changes take effect
+// the next LateUpdate automatically. No manual refresh call is needed:
+//   band, delay, bandMultiplier, colorMode, emissionColor,
+//   maxIntensity, finalIntensity, enableAudioLink, cookieSpinSpeed
 ```
 
 ---
@@ -345,6 +353,6 @@ VRSL_AudioLinkGPULightManager.Instance.RefreshFixtures();
 | `Runtime/Scripts/VRStageLighting_AudioLink_RealtimeLight.cs` | VRSL.Core | Per-fixture config component. No URP dependency. Dual-compiles as UdonSharpBehaviour / MonoBehaviour. Exposes `GetWorldPosition()` and `GetWorldForward()` for the manager. |
 | `Runtime/Scripts/GPU/VRSL_AudioLinkGPULightManager.cs` | VRSL.GPU | Singleton manager. Discovers fixtures, builds GPU buffers, uploads `VRSLALFixtureConfig` every frame from animated transforms, tracks AudioLink RTHandle. |
 | `Runtime/Scripts/GPU/VRSLAudioLinkRealtimeLightFeature.cs` | VRSL.GPU | URP `ScriptableRendererFeature`. Schedules compute pass (AudioLink → light buffer) and lighting pass (fullscreen additive) via Unity 6 Render Graph API. |
-| `Runtime/Shaders/Compute/VRSLAudioLinkLightUpdate.compute` | — | Compute kernel `UpdateLights`. Samples `_AudioTexture` for amplitude and color using integer `Load()` calls, reads world forward from config, writes `VRSLLightData` buffer. 64 threads/group. |
-| `Runtime/Shaders/Shared/VRSLLightingLibrary.hlsl` | — | Extended with `VRSLALFixtureConfig` struct (7×float4, 112 bytes). `VRSLLightData` and all lighting evaluation functions are shared between DMX and AudioLink paths. |
-| `Runtime/Shaders/VRSLDeferredLighting.shader` | — | **Unchanged.** Fullscreen additive pass shared by both the DMX and AudioLink GPU paths. Reads `_VRSLLights` / `_VRSLLightCount` globals written by whichever compute pass ran first. |
+| `Runtime/Shaders/Compute/VRSLAudioLinkLightUpdate.compute` | — | Compute kernel `UpdateLights`. Samples `_AudioTexture` for amplitude and color using integer `Load()` calls, reads world forward from config, passes cookie index and spin speed from `reserved` through to `VRSLLightData.cookieAndSpin`. 64 threads/group. |
+| `Runtime/Shaders/Shared/VRSLLightingLibrary.hlsl` | — | Extended with `VRSLALFixtureConfig` struct (7×float4, 112 bytes). `VRSLLightData` (5×float4, 80 bytes) and all lighting evaluation functions are shared between DMX and AudioLink paths. |
+| `Runtime/Shaders/VRSLDeferredLighting.shader` | — | Fullscreen additive pass shared by both GPU paths. Contains `SampleCookie()` — a perspective-projection function that derives light-space right/up from `lightDir`, reprojects the world surface point to UV using `tanHalf` from the stored `cosOuter`, and applies a time-based UV rotation (`_Time.w * 10 * cookieSpinSpeed` degrees) before sampling `_VRSLCookies`. The `Texture2DArray _VRSLCookies` is bound via `Shader.SetGlobalTexture` in `AddRenderPasses` (not inside the render graph, where only `TextureHandle` is accepted). |
