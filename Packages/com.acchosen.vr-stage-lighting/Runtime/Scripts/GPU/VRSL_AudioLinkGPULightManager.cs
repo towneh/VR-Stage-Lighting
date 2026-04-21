@@ -164,16 +164,12 @@ namespace VRSL
             // Emission color must be in linear space to match the lighting shader's expectation
             Color linearEmission = f.emissionColor.linear;
 
-            // When AudioLink is disabled the fixture contributes nothing — zero intensity
-            // produces active=0 in the compute shader and the lighting pass skips the light.
-            float maxIntensity   = f.enableAudioLink ? f.maxIntensity   : 0f;
-            float finalIntensity = f.enableAudioLink ? f.finalIntensity : 0f;
-
             return new VRSLALFixtureConfig
             {
                 positionAndRange = new Vector4(pos.x, pos.y, pos.z, range),
                 forwardAndType   = new Vector4(forward.x, forward.y, forward.z, lightType),
-                intensityParams  = new Vector4(maxIntensity, finalIntensity, 0f, 0f),
+                // z = AudioLink active flag: 1 = sample AudioLink amplitude, 0 = static full intensity
+                intensityParams  = new Vector4(f.maxIntensity, f.finalIntensity, f.enableAudioLink ? 1f : 0f, 0f),
                 spotAngles       = new Vector4(innerHalf, outerHalf, 0f, 0f),
                 alParams         = new Vector4((int)f.band, f.delay, f.bandMultiplier, (int)f.colorMode),
                 emissionColor    = new Vector4(linearEmission.r, linearEmission.g, linearEmission.b, 0f),

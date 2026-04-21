@@ -61,11 +61,20 @@ void UpdateLights(uint3 id : SV_DispatchThreadID)
 
     float maxIntensity   = cfg.intensityParams.x;
     float finalIntensity = cfg.intensityParams.y;
+    bool  alActive       = cfg.intensityParams.z > 0.5;
 
     // ── Amplitude ─────────────────────────────────────────────────────────────
-    // x=delay, y=band matches the ALPASS_AUDIOLINK layout in AudioLink.cginc
-    float amplitude = _AudioTexture.Load(int3(delay, band, 0)).r;
-    amplitude = saturate(amplitude * bandMult);
+    // When AudioLink is active, sample the band amplitude from the texture.
+    // When disabled, use 1.0 so the light stays at full maxIntensity * finalIntensity.
+    float amplitude;
+    if (alActive)
+    {
+        amplitude = saturate(_AudioTexture.Load(int3(delay, band, 0)).r * bandMult);
+    }
+    else
+    {
+        amplitude = 1.0;
+    }
 
     // ── Color ─────────────────────────────────────────────────────────────────
     float3 color = (colorMode == 0)
