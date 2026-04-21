@@ -297,6 +297,20 @@ If the scene already has `VRSL-AudioLink-Mover-Spotlight` instances placed and a
 
 3. Ensure the Unity `Light` component on each fixture is configured with an appropriate **Range** and **Spot Angle**. These values are read once when the GPU buffer is first built. If you change them at runtime, call `VRSL_AudioLinkGPULightManager.Instance.RefreshFixtures()`.
 
+   **Matching spot angles to the volumetric cone width:** The `_ConeWidth` property on the VRSL volumetric shader meshes and the Unity spotlight angles are independent systems — `_ConeWidth` is a mesh vertex displacement scalar, not an angle, so there is no formula to convert between them. Tune the two visually so the illumination footprint on surfaces aligns with the outer edge of the volumetric cone.
+
+   As a starting point for the standard AudioLink mover spotlight mesh at common `_ConeWidth` values:
+
+   | `_ConeWidth` (inspector) | Suggested outer angle (`spotAngle`) | Suggested inner angle (`innerSpotAngle`) |
+   |---|---|---|
+   | 1.0 (narrow) | 15–20° | 8–10° |
+   | 2.0 | 25–30° | 12–15° |
+   | **2.5 (default)** | **30–35°** | **15–18°** |
+   | 3.5 | 40–50° | 20–25° |
+   | 5.5 (max) | 60–70° | 30–35° |
+
+   The **Wash mover** mesh applies an additional `scalar *= 2.5` internally, making it considerably wider than the standard mover at the same `_ConeWidth` — increase the outer angle proportionally.
+
 4. Press Play. `RefreshFixtures()` runs on `OnEnable`, discovers all `VRStageLighting_AudioLink_RealtimeLight` components, creates the GPU buffers, and starts uploading per-frame transform data on `LateUpdate`.
 
 ### Tuning maxIntensity
