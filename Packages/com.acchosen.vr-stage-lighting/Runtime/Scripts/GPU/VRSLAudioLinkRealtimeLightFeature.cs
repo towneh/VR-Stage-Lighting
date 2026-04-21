@@ -84,11 +84,12 @@ namespace VRSL
         {
             class PassData
             {
-                public BufferHandle  lightDataBuffer;
-                public TextureHandle depthTexture;
-                public TextureHandle normalsTexture;
-                public Material      material;
-                public int           lightCount;
+                public BufferHandle   lightDataBuffer;
+                public TextureHandle  depthTexture;
+                public TextureHandle  normalsTexture;
+                public Material       material;
+                public int            lightCount;
+                public Texture2DArray cookieArray;
             }
 
             public override void RecordRenderGraph(RenderGraph rg, ContextContainer frame)
@@ -114,6 +115,7 @@ namespace VRSL
                 d.normalsTexture  = resources.cameraNormalsTexture;
                 d.material        = mgr.LightingMaterial;
                 d.lightCount      = mgr.FixtureCount;
+                d.cookieArray     = mgr.CookieArray;
 
                 builder.SetRenderAttachment(resources.activeColorTexture, 0, AccessFlags.ReadWrite);
                 builder.UseBuffer( d.lightDataBuffer, AccessFlags.Read);
@@ -126,6 +128,8 @@ namespace VRSL
                     var cmd = ctx.cmd;
                     cmd.SetGlobalBuffer( "_VRSLLights",     p.lightDataBuffer);
                     cmd.SetGlobalInteger("_VRSLLightCount", p.lightCount);
+                    if (p.cookieArray != null)
+                        cmd.SetGlobalTexture("_VRSLCookies", p.cookieArray);
                     cmd.DrawProcedural(Matrix4x4.identity, p.material, 0,
                         MeshTopology.Triangles, 3, 1);
                 });

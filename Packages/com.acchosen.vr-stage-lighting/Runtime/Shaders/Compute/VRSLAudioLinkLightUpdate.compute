@@ -99,6 +99,7 @@ void UpdateLights(uint3 id : SV_DispatchThreadID)
     light.directionAndType  = float4(dir, (float)lightType);
     light.colorAndIntensity = float4(color, combinedIntensity);
     light.spotCosines       = float4(innerCos, outerCos,
-                                     combinedIntensity > 0.001 ? 1.0 : 0.0, 0.0);
+                                     combinedIntensity > 0.001 ? 1.0 : 0.0,
+                                     cfg.reserved.x); // cookie slice index (-1 = none)
     _LightData[idx] = light;
 }

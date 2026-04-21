@@ -64,6 +64,11 @@ namespace VRSL
         [Tooltip("Peak light intensity (lux) at AudioLink full amplitude (1.0). Tune per scene scale.")]
         public float maxIntensity = 10f;
 
+        [Tooltip("Optional cookie (gobo) texture projected onto the light cone. "
+               + "Sampled as a greyscale mask using the red channel. "
+               + "All cookie textures in the scene are packed into a shared Texture2DArray at setup time.")]
+        public Texture2D cookieTexture;
+
         [Range(0f, 1f)]
         [Tooltip("User-side intensity cap, equivalent to Final Intensity on shader fixtures.")]
         public float finalIntensity = 1f;

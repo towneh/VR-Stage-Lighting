@@ -28,7 +28,8 @@ struct VRSLLightData
     float4 directionAndType;    // xyz = normalised direction (spot), w = type (0=spot,1=point)
     float4 colorAndIntensity;   // xyz = linear RGB, w = combined intensity
     float4 spotCosines;         // x = cos(inner half-angle), y = cos(outer half-angle),
-                                // z = active flag (0 = skip this light), w = unused
+                                // z = active flag (0 = skip this light),
+                                // w = cookie array index (-1 = no cookie, 0+ = slice)
 };
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -84,13 +85,14 @@ struct VRSLALFixtureConfig
     float4 positionAndRange;  // xyz = world pos (updated per-frame), w = range
     float4 forwardAndType;    // xyz = world forward (from tiltTransform or light, per-frame),
                               // w = light type (0=spot, 1=point)
-    float4 intensityParams;   // x = maxIntensity, y = finalIntensity, z = unused, w = unused
+    float4 intensityParams;   // x = maxIntensity, y = finalIntensity,
+                              // z = AudioLink active (1=sample AL, 0=static full intensity), w = unused
     float4 spotAngles;        // x = inner half-angle (deg), y = outer half-angle (deg),
                               // z = unused, w = unused
     float4 alParams;          // x = band (0–3), y = delay (0–127), z = bandMultiplier,
                               // w = colorMode (0=emission,1–4=theme0–3,5=colorChord)
     float4 emissionColor;     // xyz = linear RGB (used when colorMode == 0), w = unused
-    float4 reserved;          // future use
+    float4 reserved;          // x = cookie array index (-1 = no cookie, 0+ = slice in _VRSLCookies)
 };
 
 #endif // VRSL_LIGHTING_LIBRARY_INCLUDED

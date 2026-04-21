@@ -32,6 +32,39 @@ Shader "Hidden/VRSL/DeferredLighting"
             StructuredBuffer<VRSLLightData> _VRSLLights;
             uint _VRSLLightCount;
 
+            // Cookie (gobo) texture array — one slice per unique cookie texture.
+            // Slice index is stored in VRSLLightData.spotCosines.w (-1 = no cookie).
+            Texture2DArray _VRSLCookies;
+            SamplerState sampler_linear_clamp;
+
+            // Project a world-space surface point onto the light's cookie texture.
+            // Returns a [0,1] greyscale mask value (1.0 when no cookie assigned).
+            float SampleCookie(float cookieIdx, float3 posWS,
+                               float3 lightPos, float3 lightDir, float cosOuter)
+            {
+                if (cookieIdx < -0.5) return 1.0;
+
+                float3 toPixel = posWS - lightPos;
+                float  depth   = dot(toPixel, lightDir);
+                if (depth <= 0.0) return 0.0;
+
+                // Derive light-space right/up from the direction vector.
+                // Switch up-reference near vertical to avoid degenerate cross product.
+                float3 worldUp = abs(lightDir.y) < 0.99 ? float3(0, 1, 0) : float3(0, 0, 1);
+                float3 right   = normalize(cross(worldUp, lightDir));
+                float3 up      = cross(lightDir, right);
+
+                // tan(outerHalfAngle) from the stored cosine — avoids acos/radians
+                float sinOuter = sqrt(max(0.0, 1.0 - cosOuter * cosOuter));
+                float tanHalf  = sinOuter / max(cosOuter, 0.0001);
+
+                float u = dot(toPixel, right) / (depth * tanHalf) * 0.5 + 0.5;
+                float v = dot(toPixel, up)    / (depth * tanHalf) * 0.5 + 0.5;
+
+                return _VRSLCookies.SampleLevel(sampler_linear_clamp,
+                           float3(u, v, cookieIdx), 0).r;
+            }
+
             struct Varyings
             {
                 float4 positionCS : SV_POSITION;
@@ -71,8 +104,19 @@ Shader "Hidden/VRSL/DeferredLighting"
 
                 // Accumulate contributions from all VRSL lights
                 float3 lighting = 0;
-                for (uint i = 0; i < _VRSLLightCount; i++)
-                    lighting += VRSL_EvaluateLight(_VRSLLights[i], posWS, normalWS);
+                for (uint li = 0; li < _VRSLLightCount; li++)
+                {
+                    VRSLLightData light = _VRSLLights[li];
+                    float3 contrib = VRSL_EvaluateLight(light, posWS, normalWS);
+
+                    // Apply cookie projection (spotCosines.w = slice index, -1 = none)
+                    contrib *= SampleCookie(light.spotCosines.w, posWS,
+                                           light.positionAndRange.xyz,
+                                           light.directionAndType.xyz,
+                                           light.spotCosines.y);
+
+                    lighting += contrib;
+                }
 
                 return float4(lighting, 0.0);
             }

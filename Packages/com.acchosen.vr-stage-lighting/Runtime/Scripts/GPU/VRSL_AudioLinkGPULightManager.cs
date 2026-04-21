@@ -2,6 +2,7 @@ using System.Runtime.InteropServices;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Rendering;
+using System.Linq;
 
 namespace VRSL
 {
@@ -36,9 +37,12 @@ namespace VRSL
         public GraphicsBuffer FixtureConfigBuffer { get; private set; }
         public GraphicsBuffer LightDataBuffer     { get; private set; }
         public RTHandle       AudioLinkHandle     { get; private set; }
+        public Texture2DArray CookieArray         { get; private set; }
         public int  FixtureCount  { get; private set; }
         public int  ComputeKernel { get; private set; }
         public Material LightingMaterial { get; private set; }
+
+        const int CookieResolution = 256;
 
         // ── Structs — must match VRSLLightingLibrary.hlsl exactly ─────────────
         // VRSLALFixtureConfig: 7 × float4 = 112 bytes
@@ -63,6 +67,7 @@ namespace VRSL
         }
 
         List<VRStageLighting_AudioLink_RealtimeLight> _fixtures = new();
+        Dictionary<Texture2D, int> _cookieIndexMap = new();
         RenderTexture _cachedAudioTex;
 
         // ── Lifecycle ─────────────────────────────────────────────────────────
@@ -126,6 +131,7 @@ namespace VRSL
             if (lightingShader != null && LightingMaterial == null)
                 LightingMaterial = new Material(lightingShader) { hideFlags = HideFlags.HideAndDontSave };
 
+            BuildCookieArray();
             TryRefreshAudioLinkHandle();
         }
 
@@ -138,6 +144,54 @@ namespace VRSL
             for (int i = 0; i < FixtureCount; i++)
                 configs[i] = BuildConfig(_fixtures[i]);
             FixtureConfigBuffer.SetData(configs);
+        }
+
+        void BuildCookieArray()
+        {
+            _cookieIndexMap.Clear();
+            if (CookieArray != null) { Object.Destroy(CookieArray); CookieArray = null; }
+
+            var unique = _fixtures
+                .Select(f => f.cookieTexture)
+                .Where(t => t != null)
+                .Distinct()
+                .ToList();
+
+            int slices = Mathf.Max(1, unique.Count);
+            CookieArray = new Texture2DArray(CookieResolution, CookieResolution, slices,
+                TextureFormat.RGBA32, false) { hideFlags = HideFlags.HideAndDontSave };
+
+            if (unique.Count == 0)
+            {
+                // Single white slice — no fixture has a cookie but shader still needs a valid binding
+                var white = new Color[CookieResolution * CookieResolution];
+                for (int i = 0; i < white.Length; i++) white[i] = Color.white;
+                CookieArray.SetPixels(white, 0);
+            }
+            else
+            {
+                var tmp = RenderTexture.GetTemporary(CookieResolution, CookieResolution, 0,
+                    RenderTextureFormat.ARGB32, RenderTextureReadWrite.Linear);
+                var readback = new Texture2D(CookieResolution, CookieResolution,
+                    TextureFormat.RGBA32, false);
+                var prevRT = RenderTexture.active;
+
+                for (int i = 0; i < unique.Count; i++)
+                {
+                    _cookieIndexMap[unique[i]] = i;
+                    Graphics.Blit(unique[i], tmp);
+                    RenderTexture.active = tmp;
+                    readback.ReadPixels(new Rect(0, 0, CookieResolution, CookieResolution), 0, 0);
+                    readback.Apply();
+                    CookieArray.SetPixels(readback.GetPixels(), i);
+                }
+
+                RenderTexture.active = prevRT;
+                Object.Destroy(readback);
+                RenderTexture.ReleaseTemporary(tmp);
+            }
+
+            CookieArray.Apply();
         }
 
         VRSLALFixtureConfig BuildConfig(VRStageLighting_AudioLink_RealtimeLight f)
@@ -173,7 +227,11 @@ namespace VRSL
                 spotAngles       = new Vector4(innerHalf, outerHalf, 0f, 0f),
                 alParams         = new Vector4((int)f.band, f.delay, f.bandMultiplier, (int)f.colorMode),
                 emissionColor    = new Vector4(linearEmission.r, linearEmission.g, linearEmission.b, 0f),
-                reserved         = Vector4.zero,
+                // reserved.x = cookie slice index (-1 = no cookie)
+                reserved         = new Vector4(
+                    f.cookieTexture != null && _cookieIndexMap.TryGetValue(f.cookieTexture, out int ci)
+                        ? ci : -1f,
+                    0f, 0f, 0f),
             };
         }
 
@@ -199,6 +257,7 @@ namespace VRSL
         {
             FixtureConfigBuffer?.Release(); FixtureConfigBuffer = null;
             LightDataBuffer?.Release();     LightDataBuffer     = null;
+            if (CookieArray != null) { Object.Destroy(CookieArray); CookieArray = null; }
         }
     }
 }
