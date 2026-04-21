@@ -11,13 +11,13 @@ GameObject:
   - component: {fileID: 6173717927513901305}
   - component: {fileID: 6967629114539261562}
   - component: {fileID: 4955791509133369599}
-  m_Layer: 24
+  m_Layer: 0
   m_Name: MoverWashLightMesh-ProjectionPassMesh
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &6173717927513901305
 Transform:
   m_ObjectHideFlags: 0
@@ -101,7 +101,7 @@ GameObject:
   - component: {fileID: 7042515004215238741}
   - component: {fileID: 3772073501574077987}
   - component: {fileID: 5049054614621143540}
-  m_Layer: 24
+  m_Layer: 0
   m_Name: MoverWashLightMesh-LampFixture-Base
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -225,7 +225,7 @@ GameObject:
   - component: {fileID: 3775318354908286156}
   - component: {fileID: 3380086788645938475}
   - component: {fileID: 778809057044118351}
-  m_Layer: 24
+  m_Layer: 0
   m_Name: MoverWashLightMesh-LampFixture-Legs
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -335,7 +335,7 @@ GameObject:
   - component: {fileID: 2612238989014817442}
   - component: {fileID: 560954178660051411}
   - component: {fileID: 6512499448169969690}
-  m_Layer: 24
+  m_Layer: 0
   m_Name: MoverWashLightMesh-VolumetricPassMesh
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -426,7 +426,7 @@ GameObject:
   - component: {fileID: 6834375028107173918}
   - component: {fileID: 1719549566932065213}
   - component: {fileID: 7850971637571091595}
-  m_Layer: 24
+  m_Layer: 0
   m_Name: MoverWashLightMesh-LampFixture-Head
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -545,7 +545,7 @@ GameObject:
   - component: {fileID: 7714854072841162277}
   - component: {fileID: 971988968618051624}
   - component: {fileID: 6789769484224474075}
-  m_Layer: 24
+  m_Layer: 0
   m_Name: VRSL-AudioLink-Mover-Washlight-GPU
   m_TagString: Stage Lighting
   m_Icon: {fileID: 0}
@@ -625,15 +625,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 31c146941b797bd4c9364ba1cb789b3a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: VRSL.Core::VRSL.VRStageLighting_AudioLink_RealtimeLight
+  enableAudioLink: 1
   band: 0
   delay: 0
   bandMultiplier: 1
   colorMode: 0
   emissionColor: {r: 1, g: 1, b: 1, a: 1}
   realtimeLight: {fileID: 971988968618051624}
-  maxIntensity: 10
+  maxIntensity: 1
   finalIntensity: 1
-  enablePanTilt: 0
+  enablePanTilt: 1
   panTransform: {fileID: 7042515004215238741}
   tiltTransform: {fileID: 6400019575164802419}
 --- !u!108 &971988968618051624

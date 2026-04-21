@@ -11,7 +11,7 @@ GameObject:
   - component: {fileID: 6438531396142298513}
   - component: {fileID: 5938701135289584892}
   - component: {fileID: 5180710238704766867}
-  m_Layer: 24
+  m_Layer: 0
   m_Name: MoverLightMesh-VolumetricPassMesh
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -102,7 +102,7 @@ GameObject:
   - component: {fileID: 1218837125630915272}
   - component: {fileID: 3992678554846720072}
   - component: {fileID: 1310972674634808719}
-  m_Layer: 24
+  m_Layer: 0
   m_Name: MoverLightMesh-LampFixture-Legs
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -212,7 +212,7 @@ GameObject:
   - component: {fileID: 420843966083367113}
   - component: {fileID: 6736614661732575935}
   - component: {fileID: 86425701171921168}
-  m_Layer: 24
+  m_Layer: 0
   m_Name: MoverLightMesh-LampFixture-Base
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -305,7 +305,7 @@ GameObject:
   - component: {fileID: 8379240817440051708}
   - component: {fileID: 4315995195180916259}
   - component: {fileID: 8187839520037493584}
-  m_Layer: 24
+  m_Layer: 0
   m_Name: MoverLightMesh-LampFixture-Head
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -455,7 +455,7 @@ GameObject:
   - component: {fileID: 7224414695193142001}
   - component: {fileID: 4631463677783574506}
   - component: {fileID: 6839042978157024924}
-  m_Layer: 24
+  m_Layer: 0
   m_Name: VRSL-AudioLink-Mover-Spotlight-GPU
   m_TagString: Stage Lighting
   m_Icon: {fileID: 0}
@@ -535,15 +535,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 31c146941b797bd4c9364ba1cb789b3a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: VRSL.Core::VRSL.VRStageLighting_AudioLink_RealtimeLight
+  enableAudioLink: 1
   band: 0
   delay: 0
   bandMultiplier: 1
   colorMode: 0
   emissionColor: {r: 1, g: 1, b: 1, a: 1}
   realtimeLight: {fileID: 4631463677783574506}
-  maxIntensity: 10
+  maxIntensity: 5
   finalIntensity: 1
-  enablePanTilt: 0
+  enablePanTilt: 1
   panTransform: {fileID: 420843966083367113}
   tiltTransform: {fileID: 3623839858890756453}
 --- !u!108 &4631463677783574506
@@ -651,13 +652,13 @@ GameObject:
   - component: {fileID: 9210746144466135599}
   - component: {fileID: 5997932517028799757}
   - component: {fileID: 7986972827007025183}
-  m_Layer: 24
+  m_Layer: 0
   m_Name: MoverLightMesh-ProjectionPassMesh
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &9210746144466135599
 Transform:
   m_ObjectHideFlags: 0
