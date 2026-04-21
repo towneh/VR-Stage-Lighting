@@ -29,6 +29,9 @@ namespace VRSL
     {
         // ── AudioLink ─────────────────────────────────────────────────────────
         [Header("AudioLink Settings")]
+        [Tooltip("Enable or disable AudioLink reaction for this fixture. When disabled the light contributes zero intensity to the scene.")]
+        public bool enableAudioLink = true;
+
         [Tooltip("Frequency band to react to.")]
         public AudioLinkBandState band = AudioLinkBandState.Bass;
 
