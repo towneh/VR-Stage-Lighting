@@ -11,7 +11,7 @@ GameObject:
   - component: {fileID: 6799113191805487499}
   - component: {fileID: 3652877201846074882}
   m_Layer: 22
-  m_Name: PostProcessingExample-Volume
+  m_Name: PPv2Example-ACESToneMapping
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0

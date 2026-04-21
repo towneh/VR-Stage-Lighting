@@ -12,7 +12,7 @@ GameObject:
   - component: {fileID: 4720871368881201514}
   - component: {fileID: 8300775169129029482}
   m_Layer: 22
-  m_Name: PostProcessingExample-Bloom
+  m_Name: PPv2Example-Bloom
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
