@@ -6,7 +6,7 @@ This guide documents the steps required to enable the VRSL GPU realtime light pi
 
 ## Prerequisites
 
-- Unity 6 (6000.x)
+- Unity 6.1 (6000.1.x)
 - Basis project with URP configured
 - `com.acchosen.vr-stage-lighting` referenced as a local package in `Packages/manifest.json`:
   ```json
@@ -17,7 +17,7 @@ This guide documents the steps required to enable the VRSL GPU realtime light pi
 
 ## Step 1 — Add the VRSL_URP Scripting Define
 
-The `VRSL.GPU` assembly (which contains `VRSL_GPULightManager`, `VRSL_AudioLinkGPULightManager`, and both renderer features) uses a `versionDefines` entry in its `.asmdef` to emit `VRSL_URP` when `com.unity.render-pipelines.universal >= 14.0` is detected. This guard exists to keep VRChat builds clean.
+The `VRSL.GPU` assembly (which contains `VRSL_GPULightManager`, `VRSL_AudioLinkGPULightManager`, and both renderer features) uses a `versionDefines` entry in its `.asmdef` to emit `VRSL_URP` when `com.unity.render-pipelines.universal >= 17.0` is detected. This guard exists to keep VRChat builds clean.
 
 **In Basis, URP is embedded as a local package** (`"source": "embedded"` in `packages-lock.json`) with no semver version string. Unity cannot evaluate version conditions against embedded packages, so `VRSL_URP` is never automatically defined and the entire `VRSL.GPU` assembly is silently excluded from compilation.
 
