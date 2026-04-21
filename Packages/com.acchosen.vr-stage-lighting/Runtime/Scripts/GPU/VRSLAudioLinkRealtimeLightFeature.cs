@@ -84,12 +84,11 @@ namespace VRSL
         {
             class PassData
             {
-                public BufferHandle   lightDataBuffer;
-                public TextureHandle  depthTexture;
-                public TextureHandle  normalsTexture;
-                public Material       material;
-                public int            lightCount;
-                public Texture2DArray cookieArray;
+                public BufferHandle  lightDataBuffer;
+                public TextureHandle depthTexture;
+                public TextureHandle normalsTexture;
+                public Material      material;
+                public int           lightCount;
             }
 
             public override void RecordRenderGraph(RenderGraph rg, ContextContainer frame)
@@ -115,7 +114,6 @@ namespace VRSL
                 d.normalsTexture  = resources.cameraNormalsTexture;
                 d.material        = mgr.LightingMaterial;
                 d.lightCount      = mgr.FixtureCount;
-                d.cookieArray     = mgr.CookieArray;
 
                 builder.SetRenderAttachment(resources.activeColorTexture, 0, AccessFlags.ReadWrite);
                 builder.UseBuffer( d.lightDataBuffer, AccessFlags.Read);
@@ -128,8 +126,6 @@ namespace VRSL
                     var cmd = ctx.cmd;
                     cmd.SetGlobalBuffer( "_VRSLLights",     p.lightDataBuffer);
                     cmd.SetGlobalInteger("_VRSLLightCount", p.lightCount);
-                    if (p.cookieArray != null)
-                        cmd.SetGlobalTexture("_VRSLCookies", p.cookieArray);
                     cmd.DrawProcedural(Matrix4x4.identity, p.material, 0,
                         MeshTopology.Triangles, 3, 1);
                 });
@@ -154,11 +150,16 @@ namespace VRSL
 
         public override void AddRenderPasses(ScriptableRenderer renderer, ref RenderingData renderingData)
         {
-            if (VRSL_AudioLinkGPULightManager.Instance == null) return;
+            var mgr = VRSL_AudioLinkGPULightManager.Instance;
+            if (mgr == null) return;
             // Request the depth normals prepass so _CameraNormalsTexture is populated.
             // In Unity 6 URP the prepass has no Inspector toggle — it activates when a
             // renderer feature declares this requirement before enqueueing its pass.
             _lightingPass.ConfigureInput(ScriptableRenderPassInput.Normal | ScriptableRenderPassInput.Depth);
+            // Cookie array is a plain Texture2DArray — set as a global here (CPU path)
+            // rather than inside the render graph where only TextureHandle is accepted.
+            if (mgr.CookieArray != null)
+                Shader.SetGlobalTexture("_VRSLCookies", mgr.CookieArray);
             renderer.EnqueuePass(_computePass);
             renderer.EnqueuePass(_lightingPass);
         }
