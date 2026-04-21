@@ -85,6 +85,13 @@ namespace VRSL
         {
             if (realtimeLight == null)
                 realtimeLight = GetComponent<Light>();
+
+            // Disable the Unity Light so URP's own Forward+ pass does not process it
+            // as a standard additional light. All illumination is handled by the GPU
+            // pipeline's fullscreen additive pass; leaving the Light enabled causes
+            // double illumination when AudioLink is on and ambient light when it is off.
+            if (realtimeLight != null)
+                realtimeLight.enabled = false;
         }
 
         /// <summary>World-space position to use for this light (called per-frame by the manager).</summary>
