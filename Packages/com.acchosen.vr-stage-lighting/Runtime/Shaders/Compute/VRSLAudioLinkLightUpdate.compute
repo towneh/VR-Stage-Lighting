@@ -100,6 +100,9 @@ void UpdateLights(uint3 id : SV_DispatchThreadID)
     light.colorAndIntensity = float4(color, combinedIntensity);
     light.spotCosines       = float4(innerCos, outerCos,
                                      combinedIntensity > 0.001 ? 1.0 : 0.0,
-                                     cfg.reserved.x); // cookie slice index (-1 = none)
+                                     0.0);
+    light.cookieAndSpin     = float4(cfg.reserved.x,  // cookie slice index (-1 = none)
+                                     cfg.reserved.y,  // gobo spin speed
+                                     0.0, 0.0);
     _LightData[idx] = light;
 }

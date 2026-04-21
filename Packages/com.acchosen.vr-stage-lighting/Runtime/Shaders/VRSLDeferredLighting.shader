@@ -39,7 +39,9 @@ Shader "Hidden/VRSL/DeferredLighting"
 
             // Project a world-space surface point onto the light's cookie texture.
             // Returns a [0,1] greyscale mask value (1.0 when no cookie assigned).
-            float SampleCookie(float cookieIdx, float3 posWS,
+            // spinSpeed matches the volumetric shader's _SpinSpeed (range 0–10);
+            // uses the same formula: angle = _Time.w * 10 * spinSpeed (degrees).
+            float SampleCookie(float cookieIdx, float spinSpeed, float3 posWS,
                                float3 lightPos, float3 lightDir, float cosOuter)
             {
                 if (cookieIdx < -0.5) return 1.0;
@@ -60,6 +62,16 @@ Shader "Hidden/VRSL/DeferredLighting"
 
                 float u = dot(toPixel, right) / (depth * tanHalf) * 0.5 + 0.5;
                 float v = dot(toPixel, up)    / (depth * tanHalf) * 0.5 + 0.5;
+
+                // Spin: rotate UV around the centre, matching volumetric _SpinSpeed formula
+                if (spinSpeed != 0.0)
+                {
+                    float angle = radians(_Time.w * 10.0 * spinSpeed);
+                    float s = sin(angle), c = cos(angle);
+                    float cu = u - 0.5, cv = v - 0.5;
+                    u = c * cu - s * cv + 0.5;
+                    v = s * cu + c * cv + 0.5;
+                }
 
                 return _VRSLCookies.SampleLevel(sampler_linear_clamp,
                            float3(u, v, cookieIdx), 0).r;
@@ -109,8 +121,9 @@ Shader "Hidden/VRSL/DeferredLighting"
                     VRSLLightData light = _VRSLLights[li];
                     float3 contrib = VRSL_EvaluateLight(light, posWS, normalWS);
 
-                    // Apply cookie projection (spotCosines.w = slice index, -1 = none)
-                    contrib *= SampleCookie(light.spotCosines.w, posWS,
+                    // Apply cookie projection (cookieAndSpin.x = slice index, .y = spin speed)
+                    contrib *= SampleCookie(light.cookieAndSpin.x, light.cookieAndSpin.y,
+                                           posWS,
                                            light.positionAndRange.xyz,
                                            light.directionAndType.xyz,
                                            light.spotCosines.y);

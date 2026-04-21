@@ -61,7 +61,7 @@ namespace VRSL
             public Vector4 tiltSettings;        // x=maxMinTilt,y=tiltOffset,z=invertTilt,w=unused
         }
 
-        // 4 × float4 = 64 bytes
+        // 5 × float4 = 80 bytes
         [StructLayout(LayoutKind.Sequential)]
         internal struct VRSLLightData
         {
@@ -69,6 +69,7 @@ namespace VRSL
             public Vector4 directionAndType;
             public Vector4 colorAndIntensity;
             public Vector4 spotCosines;
+            public Vector4 cookieAndSpin;
         }
 
         List<VRStageLighting_DMX_RealtimeLight> _fixtures = new();
@@ -128,7 +129,7 @@ namespace VRSL
             LightDataBuffer = new GraphicsBuffer(
                 GraphicsBuffer.Target.Structured,
                 FixtureCount,
-                Marshal.SizeOf<VRSLLightData>());       // 64 bytes
+                Marshal.SizeOf<VRSLLightData>());       // 80 bytes
 
             if (computeShader != null)
                 ComputeKernel = computeShader.FindKernel("UpdateLights");

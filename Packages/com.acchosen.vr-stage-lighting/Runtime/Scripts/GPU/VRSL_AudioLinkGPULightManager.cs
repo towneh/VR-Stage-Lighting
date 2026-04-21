@@ -58,12 +58,12 @@ namespace VRSL
             public Vector4 reserved;
         }
 
-        // VRSLLightData stride mirror — 4 × float4 = 64 bytes.
+        // VRSLLightData stride mirror — 5 × float4 = 80 bytes.
         // Content is written by the compute shader; we only need the size here.
         [StructLayout(LayoutKind.Sequential)]
         struct LightDataStride
         {
-            Vector4 a, b, c, d;
+            Vector4 a, b, c, d, e;
         }
 
         List<VRStageLighting_AudioLink_RealtimeLight> _fixtures = new();
@@ -227,11 +227,12 @@ namespace VRSL
                 spotAngles       = new Vector4(innerHalf, outerHalf, 0f, 0f),
                 alParams         = new Vector4((int)f.band, f.delay, f.bandMultiplier, (int)f.colorMode),
                 emissionColor    = new Vector4(linearEmission.r, linearEmission.g, linearEmission.b, 0f),
-                // reserved.x = cookie slice index (-1 = no cookie)
+                // reserved.x = cookie slice index (-1 = no cookie), reserved.y = gobo spin speed
                 reserved         = new Vector4(
                     f.cookieTexture != null && _cookieIndexMap.TryGetValue(f.cookieTexture, out int ci)
                         ? ci : -1f,
-                    0f, 0f, 0f),
+                    f.cookieSpinSpeed,
+                    0f, 0f),
             };
         }
 

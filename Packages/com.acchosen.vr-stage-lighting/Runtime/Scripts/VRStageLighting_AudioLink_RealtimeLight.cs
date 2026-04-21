@@ -69,6 +69,10 @@ namespace VRSL
                + "All cookie textures in the scene are packed into a shared Texture2DArray at setup time.")]
         public Texture2D cookieTexture;
 
+        [Range(-10f, 10f)]
+        [Tooltip("Rotation speed for the cookie texture. Matches the Auto Spin Speed on the volumetric shader. 0 = no spin, negative = reverse direction.")]
+        public float cookieSpinSpeed = 0f;
+
         [Range(0f, 1f)]
         [Tooltip("User-side intensity cap, equivalent to Final Intensity on shader fixtures.")]
         public float finalIntensity = 1f;

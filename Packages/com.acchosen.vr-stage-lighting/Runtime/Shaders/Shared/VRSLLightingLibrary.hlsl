@@ -28,8 +28,10 @@ struct VRSLLightData
     float4 directionAndType;    // xyz = normalised direction (spot), w = type (0=spot,1=point)
     float4 colorAndIntensity;   // xyz = linear RGB, w = combined intensity
     float4 spotCosines;         // x = cos(inner half-angle), y = cos(outer half-angle),
-                                // z = active flag (0 = skip this light),
-                                // w = cookie array index (-1 = no cookie, 0+ = slice)
+                                // z = active flag (0 = skip this light), w = unused
+    float4 cookieAndSpin;       // x = cookie array index (-1 = no cookie, 0+ = slice),
+                                // y = gobo spin speed (matches volumetric _SpinSpeed range 0–10),
+                                // zw = unused
 };
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -92,7 +94,8 @@ struct VRSLALFixtureConfig
     float4 alParams;          // x = band (0–3), y = delay (0–127), z = bandMultiplier,
                               // w = colorMode (0=emission,1–4=theme0–3,5=colorChord)
     float4 emissionColor;     // xyz = linear RGB (used when colorMode == 0), w = unused
-    float4 reserved;          // x = cookie array index (-1 = no cookie, 0+ = slice in _VRSLCookies)
+    float4 reserved;          // x = cookie array index (-1 = no cookie, 0+ = slice in _VRSLCookies),
+                              // y = gobo spin speed (0 = no spin)
 };
 
 #endif // VRSL_LIGHTING_LIBRARY_INCLUDED

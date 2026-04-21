@@ -131,5 +131,6 @@ void UpdateLights(uint3 id : SV_DispatchThreadID)
     // z = active flag: skip entirely if intensity is negligible
     light.spotCosines       = float4(innerCos, outerCos,
                                      combinedIntensity > 0.001 ? 1.0 : 0.0, 0.0);
+    light.cookieAndSpin     = float4(-1, 0, 0, 0); // DMX path: no cookie, no spin
     _LightData[idx] = light;
 }
