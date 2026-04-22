@@ -1,6 +1,6 @@
 # VRSL URP Realtime Lights — Implementation Guide
 
-This document describes the implementation journey of extending VRSL's GPU-driven DMX pipeline to drive genuine scene lighting in Unity 6 URP, replacing the original shader-based volumetric simulation with a fully GPU-resident realtime light path. It is intended as a reference for contributors and for anyone integrating the system into a new Unity 6.1+ URP (URP 17) project.
+This document describes the implementation journey of extending VRSL's GPU-driven DMX pipeline to drive genuine scene lighting in Unity 6 URP, replacing the original shader-based volumetric simulation with a fully GPU-resident realtime light path. It is intended as a reference for contributors and for anyone integrating the system into a new Unity 6 URP project.
 
 ---
 
@@ -335,12 +335,12 @@ The `PassData` class per-pass pattern is the idiomatic Unity 6 render graph appr
 
 The GPU scripts live in `Runtime/Scripts/GPU/` under `VRSL.GPU.asmdef`, separate from `VRSL.Core`. This separation exists because `VRSL.Core` is used by VRChat projects that have the VRChat SDK but not URP. Adding `Unity.RenderPipelines.Universal.Runtime` to `VRSL.Core`'s references would break every VRChat build.
 
-`VRSL.GPU.asmdef` uses `versionDefines` to emit the `VRSL_URP` scripting define when `com.unity.render-pipelines.universal >= 17.0` is installed, and `defineConstraints` to skip compilation of the entire assembly when URP is absent:
+`VRSL.GPU.asmdef` uses `versionDefines` to emit the `VRSL_URP` scripting define when `com.unity.render-pipelines.universal >= 14.0` is installed, and `defineConstraints` to skip compilation of the entire assembly when URP is absent:
 
 ```json
 "versionDefines": [{
     "name": "com.unity.render-pipelines.universal",
-    "expression": "17.0",
+    "expression": "14.0",
     "define": "VRSL_URP"
 }],
 "defineConstraints": ["VRSL_URP"]
@@ -350,7 +350,7 @@ The GPU scripts live in `Runtime/Scripts/GPU/` under `VRSL.GPU.asmdef`, separate
 
 ---
 
-## Setup Guide (Unity 6.1+ URP (URP 17))
+## Setup Guide (Unity 6 URP)
 
 ### URP Renderer Asset
 
@@ -398,8 +398,6 @@ VRSL_GPULightManager.Instance.RefreshFixtures();
 
 **No shadow casting.** Shadows require shadow maps, which are generated per-light by Unity's shadow pass. Since this system bypasses Unity's `Light` component entirely, no shadow maps are generated. Adding shadow support would require integrating the GPU light buffer into URP's shadow casting path, which is not currently implemented.
 
-**Screen Space Global Illumination (SSGI) — supported in URP 17.** The VRSL additive pass runs at `AfterRenderingOpaques`, before post-processing, so surfaces lit by VRSL GPU lights are present in the colour buffer when SSGI samples it. This means SSGI indirect bounce lighting automatically reflects VRSL light contributions with no additional setup. Add a **Global Volume** with the **Screen Space Global Illumination** override enabled to get one-bounce indirect light from all GPU fixtures — both DMX and AudioLink paths benefit equally. Requires URP 17 (Unity 6.1+).
-
 **NineUniverse mode not supported.** The compute shader's `GetDMXValue` implements the standard `IndustryRead` path only. NineUniverse mode alters which colour channel of the texture encodes each channel value and requires additional branching in the sampling function.
 
 ---
@@ -411,7 +409,7 @@ VRSL_GPULightManager.Instance.RefreshFixtures();
 | `Runtime/Scripts/VRStageLighting_DMX_RealtimeLight.cs` | VRSL.Core | Per-fixture DMX config component; shared between GPU manager and scene setup |
 | `Runtime/Scripts/GPU/VRSL_GPULightManager.cs` | VRSL.GPU | Singleton; owns both GraphicsBuffers and DMX texture RTHandles; uploads fixture config |
 | `Runtime/Scripts/GPU/VRSLRealtimeLightFeature.cs` | VRSL.GPU | URP ScriptableRendererFeature; schedules compute pass + fullscreen lighting pass via Render Graph |
-| `Runtime/Scripts/GPU/VRSL.GPU.asmdef` | — | Assembly definition; isolates URP dependency; only compiles when URP 17.0+ present |
+| `Runtime/Scripts/GPU/VRSL.GPU.asmdef` | — | Assembly definition; isolates URP dependency; only compiles when URP 14.0+ present |
 | `Runtime/Shaders/Shared/VRSLLightingLibrary.hlsl` | — | HLSL struct definitions and light evaluation functions shared by compute and fragment shaders |
 | `Runtime/Shaders/Compute/VRSLDMXLightUpdate.compute` | — | Compute shader; DMX texture sampling, pan/tilt rotation, light buffer write |
 | `Runtime/Shaders/VRSLDeferredLighting.shader` | — | Fullscreen additive pass; depth/normal read, world position reconstruction, light loop |

@@ -1,6 +1,6 @@
 # VRSL AudioLink GPU Realtime Lights — Implementation Guide
 
-This document describes the design and implementation of extending VRSL's GPU realtime light pipeline to support AudioLink as a data source, complementing the existing DMX path documented in `URP-Realtime-Lights.md`. It is intended as a reference for contributors and for anyone integrating AudioLink-driven scene illumination into a Unity 6.1+ URP (URP 17) project.
+This document describes the design and implementation of extending VRSL's GPU realtime light pipeline to support AudioLink as a data source, complementing the existing DMX path documented in `URP-Realtime-Lights.md`. It is intended as a reference for contributors and for anyone integrating AudioLink-driven scene illumination into a Unity 6 URP project.
 
 ---
 
@@ -90,7 +90,7 @@ The consequence of per-frame config uploads is a small but real CPU cost: `N × 
 - The existing fullscreen `VRSLDeferredLighting.shader` is reused without modification
 - The existing AudioLink volumetric shader meshes are untouched — both can run simultaneously
 - `VRSL.Core` remains unchanged; no URP dependency introduced into the base assembly
-- VRChat builds are unaffected (`VRSL.GPU.asmdef` only compiles when URP ≥17.0 is present)
+- VRChat builds are unaffected (`VRSL.GPU.asmdef` only compiles when URP ≥14.0 is present)
 
 ### Full Pipeline Architecture
 
@@ -234,7 +234,6 @@ Emission colors in Unity are authored in gamma space via the color picker but mu
 
 **No shadow casting.** Identical to the DMX path — bypassing Unity's `Light` component means no shadow maps are generated. See `URP-Realtime-Lights.md` Known Limitations for the full shadow cost discussion.
 
-**Screen Space Global Illumination (SSGI).** Supported in URP 17 (Unity 6.1+) — see `URP-Realtime-Lights.md` Known Limitations for details. The AudioLink GPU path benefits identically to the DMX path.
 
 **Simultaneous DMX + AudioLink GPU paths are not supported.** Both `VRSLRealtimeLightFeature` and `VRSLAudioLinkRealtimeLightFeature` write to the same `_VRSLLights` / `_VRSLLightCount` globals, and the last lighting pass to execute overwrites the other. A future merged-buffer path would require extending `VRSLDeferredLighting.shader` to accept two separate buffers and light counts, or a dedicated merge pass that concatenates both into a single buffer before the lighting pass.
 
@@ -242,7 +241,7 @@ Emission colors in Unity are authored in gamma space via the color picker but mu
 
 ---
 
-## Setup Guide (Unity 6.1+ URP (URP 17))
+## Setup Guide (Unity 6 URP)
 
 ### Prerequisites
 
