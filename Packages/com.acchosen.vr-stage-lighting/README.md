@@ -26,7 +26,7 @@ This performance is provided through a standardized set of custom shaders that a
 - AudioLink v2.7+ (Full)
 
 #### URP GPU Realtime Lights (Unity 6 — non-VRChat)
-- Unity 6000.4+
+- Unity 6000.0+
 - Universal Render Pipeline 14.0+ (Forward+ rendering path)
 - AudioLink (for the AudioLink GPU path)
 
