@@ -5952,10 +5952,6 @@ PrefabInstance:
       propertyPath: m_SpotAngle
       value: 32
       objectReference: {fileID: 0}
-    - target: {fileID: 4631463677783574506, guid: a7558b7c63c8f0e4b83a852c0548dcfd, type: 3}
-      propertyPath: m_InnerSpotAngle
-      value: 16
-      objectReference: {fileID: 0}
     - target: {fileID: 5240682433577936540, guid: a7558b7c63c8f0e4b83a852c0548dcfd, type: 3}
       propertyPath: m_LocalScale.x
       value: 1.2499999
