@@ -1,6 +1,6 @@
 # VR Stage Lighting - Changelog
 
-## 2.9.0 Change Log - April 22, 2025
+## 2.9.0 Change Log - April 22, 2026
 
 - Added a fully GPU-driven realtime light pipeline for **Unity 6 URP (Forward+)**. Fixtures now genuinely illuminate scene geometry — floors, walls, and props respond to the light show rather than just displaying volumetric beams.
 - The new pipeline is split into two render graph passes per data source:
