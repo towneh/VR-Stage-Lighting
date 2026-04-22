@@ -1,5 +1,22 @@
 # VR Stage Lighting - Changelog
 
+## 2.9.0 Change Log - April 22, 2025
+
+- Added a fully GPU-driven realtime light pipeline for **Unity 6 URP (Forward+)**. Fixtures now genuinely illuminate scene geometry — floors, walls, and props respond to the light show rather than just displaying volumetric beams.
+- The new pipeline is split into two render graph passes per data source:
+  - **Compute Pass** (`BeforeRenderingOpaques`): reads fixture config from a `StructuredBuffer` and writes per-fixture light data (position, direction, colour, intensity, cone angles) entirely on the GPU. No CPU work occurs per-frame per-fixture.
+  - **Lighting Pass** (`AfterRenderingOpaques`): a fullscreen additive triangle pass that reconstructs world-space positions from the depth buffer, reads the normals prepass, evaluates all active fixtures per pixel, and accumulates the result into the active colour target.
+- **DMX GPU path**: add a `VRStageLighting_DMX_RealtimeLight` component to any DMX fixture and register it with the `VRSL_GPULightManager` singleton. The compute shader reads the existing CRT RenderTextures directly — no changes to the DMX decode chain are required.
+- **AudioLink GPU path**: add a `VRStageLighting_AudioLink_RealtimeLight` component to any AudioLink mover fixture. The `VRSL_AudioLinkGPULightManager` singleton uploads fixture directions from animated transforms each frame and the compute shader reads amplitude and colour from the global `_AudioTexture`. Use the new **VRSL → Setup AudioLink GPU Realtime Lights in Scene** editor utility to configure an entire scene in one click.
+- Added `VRSLRealtimeLightFeature` and `VRSLAudioLinkRealtimeLightFeature` `ScriptableRendererFeature` assets for wiring up each path in your URP Renderer.
+- Added new GPU-ready prefabs: `VRSL-AudioLink-GPU-Manager`, `VRSL-AudioLink-Mover-Spotlight-GPU`, `VRSL-AudioLink-Mover-Washlight-GPU`, and DMX GPU Blinder/ParLight prefabs.
+- Added cookie (gobo) texture array support to the AudioLink realtime light path, including a configurable spin speed.
+- Added `enableAudioLink` toggle to `VRStageLighting_AudioLink_RealtimeLight`: when disabled the fixture renders at full static intensity rather than going dark, useful for ambient fill lights.
+- Added a new example scene (`VRSL-ExampleScene-AudioLink-URPRealtimeLights`) demonstrating the AudioLink GPU pipeline.
+- The entire GPU pipeline lives in a new `VRSL.GPU` assembly that only compiles when URP ≥ 14.0 is installed, keeping VRChat/UdonSharp builds completely unaffected.
+- Fixed several null-reference guards in the volumetric path (`laserSlider`, `AudioLink_CRTs`, `volumetricMaterials`, `projectionMaterials`).
+- Post-processing example assets split into separate URP and PPv2 variants.
+
 ## 2.8.0 Change Log - May 21, 2024
 
 - Applied a bunch of community PRs! Here's a list of them:

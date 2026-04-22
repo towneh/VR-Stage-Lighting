@@ -263,7 +263,16 @@ Open the URP Renderer asset. Under **Renderer Features**, add **`VRSLAudioLinkRe
 
 Drag **`Packages/VR Stage Lighting/Runtime/Prefabs/GPU/VRSL-AudioLink-GPU-Manager`** into the scene. Both the Compute Shader and Lighting Shader fields are pre-assigned.
 
-For fixtures, drag **`Packages/VR Stage Lighting/Runtime/Prefabs/GPU/VRSL-AudioLink-Mover-Spotlight-GPU`** for each fixture position. This standalone prefab contains the full mesh hierarchy with a pre-configured `Light` and `AudioLink Realtime Light` component.
+For fixtures, use one of the included AudioLink GPU prefabs from `Packages/VR Stage Lighting/Runtime/Prefabs/GPU/`:
+
+| Prefab | Fixture type |
+|--------|-------------|
+| `VRSL-AudioLink-Mover-Spotlight-GPU` | Moving-head spotlight |
+| `VRSL-AudioLink-Mover-Washlight-GPU` | Moving-head wash light |
+| `VRSL-AudioLink-Static-Blinder-GPU` | Static blinder / strobe bar |
+| `VRSL-AudioLink-Static-ParLight-GPU` | Static par can |
+
+Each prefab contains the full mesh hierarchy with a pre-configured `Light` and `VRStageLighting_AudioLink_RealtimeLight` component.
 
 **Option B — Migrate existing mover instances with the Editor utility**
 

@@ -81,6 +81,35 @@ An example scene is included that show the different light types reacting to the
 
 You can get Audiolink as well as learn more about it [here](https://github.com/llealloo/vrc-udon-audio-link)!
 
+### GPU Realtime Lights — DMX (Unity 6 URP)
+
+> **Requires Unity 6 with URP (Forward+) and the `VRSL.GPU` assembly.**
+
+For Unity 6 URP projects where you want VRSL fixtures to genuinely illuminate scene geometry, the DMX GPU realtime light path drives actual scene lights directly from the existing DMX CRT pipeline — no additional CPU work per frame per fixture.
+
+The pipeline is two passes wired up via a `ScriptableRendererFeature`:
+
+1. **Compute pass** — runs before opaque rendering. A compute shader reads the same CRT `RenderTexture`s used by the volumetric shaders, decodes colour, intensity, pan, and tilt from them on the GPU, and writes the result to a `StructuredBuffer` of light data that never leaves the GPU.
+2. **Lighting pass** — runs after opaque rendering. A fullscreen additive shader reconstructs world-space positions from the depth buffer, reads the normals prepass, and accumulates contributions from all active fixtures per pixel directly into the colour target.
+
+Add `VRStageLighting_DMX_RealtimeLight` to your DMX fixtures, register them with the `VRSL_GPULightManager` singleton, and add the `VRSLRealtimeLightFeature` renderer feature to your URP Renderer asset. The DMX decode chain is shared with the existing volumetric path — you can run both simultaneously.
+
+See `Documentation~/URP-Realtime-Lights.md` for the full implementation guide.
+
+### GPU Realtime Lights — AudioLink (Unity 6 URP)
+
+> **Requires Unity 6 with URP (Forward+) and AudioLink.**
+
+The AudioLink GPU realtime light path brings the same geometry-illuminating capability to AudioLink-driven fixtures. Bass-reactive wash lights will now light up the floor; spotlight beams will cast real coloured light on nearby surfaces — all pulsing in time with the music.
+
+Because AudioLink has no pan/tilt channels, the fixture manager reads animated transform directions from the CPU once per frame (in `LateUpdate`, after animations run) and uploads them to the GPU. The compute shader then samples the global `_AudioTexture` for amplitude and colour, writing the same `VRSLLightData` buffer consumed by the shared fullscreen lighting pass.
+
+Add `VRStageLighting_AudioLink_RealtimeLight` to your AudioLink mover fixtures, place the `VRSL-AudioLink-GPU-Manager` prefab in your scene with the compute and lighting shaders assigned, and add the `VRSLAudioLinkRealtimeLightFeature` renderer feature to your URP Renderer asset. For quick scene-wide setup, use **VRSL → Setup AudioLink GPU Realtime Lights in Scene** in the Unity menu bar.
+
+Cookie (gobo) textures, spin speed, and an `enableAudioLink` toggle (which falls back to full static intensity when disabled) are all supported.
+
+See `Documentation~/AudioLink-GPU-Realtime-Lights.md` for the full implementation guide.
+
 ### Limitations
 
 - This system requires using a livestream, meaning there will be some unavoidable latency for realtime setups.
