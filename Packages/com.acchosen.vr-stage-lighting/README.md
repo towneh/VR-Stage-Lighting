@@ -1,8 +1,8 @@
 ![vrsl-compact](https://user-images.githubusercontent.com/107726700/194073524-eb74f90e-2d40-440c-adea-38a5e0d4ec19.png)
 
-<h2 align="center"> VR Stage Lighting is a collection of shaders, scripts, and models designed to emulate professional stage lighting into VRChat in as many ways as possible.</h2>
+<h2 align="center"> VR Stage Lighting is a collection of shaders, scripts, and models designed to emulate professional stage lighting into social VR experiences in as many ways as possible.</h2>
 
-VR Stage Lighting is a year-long project that started out as a means to research and develop a performant/reliable way to send lighting data (including DMX512) to VRChat. It has evolved into creating a package of assets that can bring quality lighting effects in all manner of ways performantly.
+VR Stage Lighting started out as a means to research and develop a performant/reliable way to send lighting data (including DMX512) to VRChat. It has since evolved into a broader package of assets that can bring quality lighting effects to social VR experiences in all manner of ways performantly.
 
 This performance is provided through a standardized set of custom shaders that avoid things such as real-time unity lights and using cost saving measures such as GPU-instancing and batching.
 
@@ -10,8 +10,7 @@ This performance is provided through a standardized set of custom shaders that a
 ### SEE ALL THESE SYSTEMS LIVE IN VRCHAT [@ CLUB ORION](https://vrchat.com/home/launch?worldId=wrld_b2d9f284-3a77-4a8a-a58e-f8427f87ba79)
 
 ## IMPORTANT
-- These systems are designed for world building on VRChat for PC. While some of the shaders in theory could be used on avatars, they are primarily designed to be placed in a PC world.
-- This system is still a work in progress and is planned for long-term support as more VRChat features are released. Planned features include OSC support and Quest-Ready alternatives.
+- These systems are designed for world building on Desktop. While some of the shaders in theory could be used on avatars, they are primarily designed to be placed in a world.
 - For proper documentation, please refer to the [github wiki](https://github.com/AcChosen/VR-Stage-Lighting/wiki).
 
 ## Setup
