@@ -10,11 +10,8 @@
 - **AudioLink GPU path**: add a `VRStageLighting_AudioLink_RealtimeLight` component to any AudioLink mover fixture. The `VRSL_AudioLinkGPULightManager` singleton uploads fixture directions from animated transforms each frame and the compute shader reads amplitude and colour from the global `_AudioTexture`. Use the new **VRSL → Setup AudioLink GPU Realtime Lights in Scene** editor utility to configure an entire scene in one click.
 - Added `VRSLRealtimeLightFeature` and `VRSLAudioLinkRealtimeLightFeature` `ScriptableRendererFeature` assets for wiring up each path in your URP Renderer.
 - Added new GPU-ready prefabs: `VRSL-AudioLink-GPU-Manager`, `VRSL-AudioLink-Mover-Spotlight-GPU`, `VRSL-AudioLink-Mover-Washlight-GPU`, and DMX GPU Blinder/ParLight prefabs.
-- Added cookie (gobo) texture array support to the AudioLink realtime light path, including a configurable spin speed.
-- Added `enableAudioLink` toggle to `VRStageLighting_AudioLink_RealtimeLight`: when disabled the fixture renders at full static intensity rather than going dark, useful for ambient fill lights.
 - Added a new example scene (`VRSL-ExampleScene-AudioLink-URPRealtimeLights`) demonstrating the AudioLink GPU pipeline.
 - The entire GPU pipeline lives in a new `VRSL.GPU` assembly that only compiles when URP ≥ 14.0 is installed, keeping VRChat/UdonSharp builds completely unaffected.
-- Fixed several null-reference guards in the volumetric path (`laserSlider`, `AudioLink_CRTs`, `volumetricMaterials`, `projectionMaterials`).
 - Post-processing example assets split into separate URP and PPv2 variants.
 
 ## 2.8.0 Change Log - May 21, 2024
