@@ -17,15 +17,24 @@ This performance is provided through a standardized set of custom shaders that a
 ## Setup
 
 ### Requirements
+
+#### VRChat (Standard)
 - Unity 2019.4
 - VRChat SDK3 for Worlds
 - UdonSharp
 - USharp Video Player
 - PostProcessing Stack V2 (Unity Package Manager)
 - AudioLink v2.7+ (Full)
-- Recommended: Open Broadcast Software (or streaming software of your choice)
-- Recommended: VRSL Grid Node (For DMX control)
-- Recommended: At least one extra screen that can support 16:9 resolutions.
+
+#### URP GPU Realtime Lights (Unity 6 — non-VRChat)
+- Unity 6000.4+
+- Universal Render Pipeline 14.0+ (Forward+ rendering path)
+- AudioLink (for the AudioLink GPU path)
+
+#### Recommended (all setups)
+- Open Broadcast Software (or streaming software of your choice)
+- VRSL Grid Node (for DMX control)
+- At least one extra screen that can support 16:9 resolutions.
 
 ### Installation
 

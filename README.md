@@ -4,17 +4,10 @@
 
 VR Stage Lighting is a year-long project that started out as a means to research and develop a performant/reliable way to send lighting data (including DMX512) to VRChat. It has evolved into creating a package of assets that can bring quality lighting effects in all manner of ways performantly.
 
-This performance is provided through a standardized set of custom shaders that aim to avoid things such as real-time unity lights and using cost saving measures such as GPU-instancing and batching.
+This performance is provided through a standardized set of custom shaders that avoid things such as real-time unity lights and using cost saving measures such as GPU-instancing and batching.
 
-# GET THE VPM PACKAGE [@ VPM.VRSL.DEV](https://vpm.vrsl.dev)
 
 ### SEE ALL THESE SYSTEMS LIVE IN VRCHAT [@ CLUB ORION](https://vrchat.com/home/launch?worldId=wrld_b2d9f284-3a77-4a8a-a58e-f8427f87ba79)
-
-### JOIN THE GROWING VRSL COMMUNITY ON OUR DISCORD [@ VRSL.DEV](https://vrsl.dev)
-
-### CHECK OUT AN EXAMPLE ORION MUSIC FESTIVAL'S IMPLEMENTATION OF VRSL (Click the image below)!:
-
-[![VRSL EXample Video](https://imgur.com/RsnNnML.png)](https://youtu.be/b6SjQHFF6Qo "Defreeze at Orion Music Festival 2022")
 
 ## IMPORTANT
 - These systems are designed for world building on VRChat for PC. While some of the shaders in theory could be used on avatars, they are primarily designed to be placed in a PC world.
@@ -24,15 +17,24 @@ This performance is provided through a standardized set of custom shaders that a
 ## Setup
 
 ### Requirements
+
+#### VRChat (Standard)
 - Unity 2019.4
 - VRChat SDK3 for Worlds
 - UdonSharp
 - USharp Video Player
 - PostProcessing Stack V2 (Unity Package Manager)
 - AudioLink v2.7+ (Full)
-- Recommended: Open Broadcast Software (or streaming software of your choice)
-- Recommended: VRSL Grid Node (For DMX control)
-- Recommended: At least one extra screen that can support 16:9 resolutions.
+
+#### URP GPU Realtime Lights (Unity 6 — non-VRChat)
+- Unity 6000.4+
+- Universal Render Pipeline 14.0+ (Forward+ rendering path)
+- AudioLink (for the AudioLink GPU path)
+
+#### Recommended (all setups)
+- Open Broadcast Software (or streaming software of your choice)
+- VRSL Grid Node (for DMX control)
+- At least one extra screen that can support 16:9 resolutions.
 
 ### Installation
 
@@ -65,7 +67,6 @@ This repository comes with an example recorded video in an example scene of the 
 ### Get the Artnet Gridnode
 
 #### While VRSL's lights and shaders are open source, Artnet Grid Node is not.
-However, there is an open source alternative called [HNode](https://github.com/Happyrobot33/HNode) that you can find here!
 
 [Purchasing a copy](https://gumroad.com/l/xYaPu) of the VR Stage Lighting Grid Node will help in the development of both the node grid and the VRSL framework!
 
@@ -88,6 +89,35 @@ These shaders will have their intensity's react to the audio at different freque
 An example scene is included that show the different light types reacting to the different frequency bands of audio.
 
 You can get Audiolink as well as learn more about it [here](https://github.com/llealloo/vrc-udon-audio-link)!
+
+### GPU Realtime Lights — DMX (Unity 6 URP)
+
+> **Requires Unity 6 with URP (Forward+) and the `VRSL.GPU` assembly.**
+
+For Unity 6 URP projects where you want VRSL fixtures to genuinely illuminate scene geometry, the DMX GPU realtime light path drives actual scene lights directly from the existing DMX CRT pipeline — no additional CPU work per frame per fixture.
+
+The pipeline is two passes wired up via a `ScriptableRendererFeature`:
+
+1. **Compute pass** — runs before opaque rendering. A compute shader reads the same CRT `RenderTexture`s used by the volumetric shaders, decodes colour, intensity, pan, and tilt from them on the GPU, and writes the result to a `StructuredBuffer` of light data that never leaves the GPU.
+2. **Lighting pass** — runs after opaque rendering. A fullscreen additive shader reconstructs world-space positions from the depth buffer, reads the normals prepass, and accumulates contributions from all active fixtures per pixel directly into the colour target.
+
+Add `VRStageLighting_DMX_RealtimeLight` to your DMX fixtures, register them with the `VRSL_GPULightManager` singleton, and add the `VRSLRealtimeLightFeature` renderer feature to your URP Renderer asset. The DMX decode chain is shared with the existing volumetric path — you can run both simultaneously.
+
+See `Documentation~/URP-Realtime-Lights.md` for the full implementation guide.
+
+### GPU Realtime Lights — AudioLink (Unity 6 URP)
+
+> **Requires Unity 6 with URP (Forward+) and AudioLink.**
+
+The AudioLink GPU realtime light path brings the same geometry-illuminating capability to AudioLink-driven fixtures. Bass-reactive wash lights will now light up the floor; spotlight beams will cast real coloured light on nearby surfaces — all pulsing in time with the music.
+
+Because AudioLink has no pan/tilt channels, the fixture manager reads animated transform directions from the CPU once per frame (in `LateUpdate`, after animations run) and uploads them to the GPU. The compute shader then samples the global `_AudioTexture` for amplitude and colour, writing the same `VRSLLightData` buffer consumed by the shared fullscreen lighting pass.
+
+Add `VRStageLighting_AudioLink_RealtimeLight` to your AudioLink mover fixtures, place the `VRSL-AudioLink-GPU-Manager` prefab in your scene with the compute and lighting shaders assigned, and add the `VRSLAudioLinkRealtimeLightFeature` renderer feature to your URP Renderer asset. For quick scene-wide setup, use **VRSL → Setup AudioLink GPU Realtime Lights in Scene** in the Unity menu bar.
+
+Cookie (gobo) textures, spin speed, and an `enableAudioLink` toggle (which falls back to full static intensity when disabled) are all supported.
+
+See `Documentation~/AudioLink-GPU-Realtime-Lights.md` for the full implementation guide.
 
 ### Limitations
 
