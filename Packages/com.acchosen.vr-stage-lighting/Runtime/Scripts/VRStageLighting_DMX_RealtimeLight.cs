@@ -61,6 +61,15 @@ namespace VRSL
         [Tooltip("Allow DMX strobe channel to gate this light on/off.")]
         public bool enableStrobe = true;
 
+        [Tooltip("Read the motor-speed/zoom channel (ch+4) and apply it to the spotlight cone angle.")]
+        public bool enableConeWidth = true;
+
+        [Tooltip("Spot angle in degrees when the cone-width DMX channel is at minimum (0).")]
+        public float minSpotAngle = 5f;
+
+        [Tooltip("Spot angle in degrees when the cone-width DMX channel is at maximum (255).")]
+        public float maxSpotAngle = 60f;
+
         // ──────────────────────────────────────────────────────────────────────────
         // Pan / Tilt (for moving-head fixtures)
         // ──────────────────────────────────────────────────────────────────────────
@@ -139,6 +148,14 @@ namespace VRSL
 
             realtimeLight.color = new Color(r, g, b) * lightColorTint;
             realtimeLight.intensity = intensity * maxIntensity * finalIntensity * strobe;
+
+            // Cone width — ch+4 (motor speed / zoom channel), matches getDMXConeWidth() in VRSL-DMXFunctions.cginc
+            if (enableConeWidth && realtimeLight.type == LightType.Spot)
+            {
+                float coneRaw = reader.GetMainValue(_absChannel + 4);
+                realtimeLight.spotAngle = Mathf.Lerp(minSpotAngle, maxSpotAngle, coneRaw);
+                realtimeLight.innerSpotAngle = realtimeLight.spotAngle * 0.5f;
+            }
 
             if (enablePanTilt)
                 ApplyPanTilt(reader);
