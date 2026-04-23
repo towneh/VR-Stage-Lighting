@@ -151,8 +151,10 @@ namespace VRSL
             if (enableFineChannels)
                 panRaw += reader.GetMovementValue(_absChannel + 1) / 256f;
 
-            // Matches GetPanValue() in VRSL-DMXFunctions.cginc
-            float panDeg = (maxMinPan * 2f * panRaw) - maxMinPan;
+            // Matches GetPanValue() in VRSL-DMXFunctions.cginc.
+            // Static passes maxMinPan/2 as _MaxMinPanAngle, so the shader computes
+            // (maxMinPan/2 * 2 * inputValue) - maxMinPan/2 = maxMinPan * inputValue - maxMinPan/2.
+            float panDeg = (maxMinPan * panRaw) - (maxMinPan / 2f);
             if (invertPan) panDeg = -panDeg;
             panDeg += panOffset;
 
@@ -161,15 +163,26 @@ namespace VRSL
             if (enableFineChannels)
                 tiltRaw += reader.GetMovementValue(_absChannel + 3) / 256f;
 
-            // Matches GetTiltValue() in VRSL-DMXFunctions.cginc
-            float tiltDeg = (maxMinTilt * 2f * tiltRaw) - maxMinTilt;
+            // Matches GetTiltValue() in VRSL-DMXFunctions.cginc (same derivation as pan).
+            float tiltDeg = (maxMinTilt * tiltRaw) - (maxMinTilt / 2f);
             if (invertTilt) tiltDeg = -tiltDeg;
             tiltDeg += tiltOffset;
 
             if (panTransform != null)
-                panTransform.localRotation = Quaternion.Euler(0f, panDeg, 0f);
+            {
+                // The shader's rotateYMatrix rotates around object-space Z (keeps Z fixed,
+                // rotates XY). With the standard 90° X root rotation, object Z = world -Y,
+                // so pan must rotate around local Z — not local Y.
+                panTransform.localRotation = Quaternion.AngleAxis(panDeg, Vector3.forward);
+            }
             if (tiltTransform != null)
-                tiltTransform.localRotation = Quaternion.Euler(tiltDeg, 0f, 0f);
+            {
+                // The shader's tiltOffset=90 rotates the beam from object +Y to object +Z
+                // (world -Y, pointing straight down). The fixture root's 90° X rotation
+                // already provides that same 90° shift in the Transform path, so subtract
+                // 90° here to avoid applying it twice.
+                tiltTransform.localRotation = Quaternion.Euler(tiltDeg - 90f, 0f, 0f);
+            }
         }
     }
 }
