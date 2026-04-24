@@ -102,6 +102,16 @@ namespace VRSL
         public float tiltOffset = 90f;
 
         // ──────────────────────────────────────────────────────────────────────────
+        // Light output axis
+        // ──────────────────────────────────────────────────────────────────────────
+        [Header("Light Output Axis")]
+        [Tooltip("Local-space direction the light shines from this fixture. "
+               + "Defaults to forward (+Z) which matches moving-head fixtures. "
+               + "Set to up (+Y) for par cans and other fixtures whose lens faces "
+               + "local +Y (e.g. when the fixture body is mounted upside-down).")]
+        public Vector3 localLightDirection = Vector3.forward;
+
+        // ──────────────────────────────────────────────────────────────────────────
         int _absChannel;
 
         void Awake()

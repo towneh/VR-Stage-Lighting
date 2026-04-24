@@ -202,8 +202,12 @@ namespace VRSL
         {
             Vector3 pos = f.transform.position;
 
-            // transform.forward = world -Y for a standard 90° X root fixture (no Light needed).
-            Vector3 baseForward = f.transform.forward;
+            // Use the fixture's declared local light axis (defaults to forward for moving heads).
+            // Par cans and similar fixtures whose lens faces local +Y use Vector3.up here.
+            Vector3 localDir    = f.localLightDirection.sqrMagnitude > 0f
+                                      ? f.localLightDirection.normalized
+                                      : Vector3.forward;
+            Vector3 baseForward = f.transform.TransformDirection(localDir);
             Vector3 panAxis     = Vector3.up;
 
             int   lightType    = f.isPointLight ? 1 : 0;
@@ -225,8 +229,8 @@ namespace VRSL
                     f.enablePanTilt      ? 1f : 0f,
                     f.enableFineChannels ? 1f : 0f),
                 panSettings  = new Vector4(f.maxMinPan,  f.panOffset,  f.invertPan  ? 1f : 0f, f.enableGoboSpin ? 1f : 0f),
-                // Subtract 90° from tiltOffset: baseForward already points down (world -Y)
-                // via transform.forward, so the 90° Rodrigues default must not be re-applied.
+                // Subtract 90° from tiltOffset: baseForward for moving heads already points
+                // world -Y (via the 90° X root rotation), so the Rodrigues default is not re-applied.
                 tiltSettings = new Vector4(f.maxMinTilt, f.tiltOffset - 90f, f.invertTilt ? 1f : 0f, f.enableGobo ? 1f : 0f),
             };
         }

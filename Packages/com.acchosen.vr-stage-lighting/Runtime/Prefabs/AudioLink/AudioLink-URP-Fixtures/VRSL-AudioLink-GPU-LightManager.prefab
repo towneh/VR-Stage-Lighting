@@ -11,7 +11,7 @@ GameObject:
   - component: {fileID: 1000001}
   - component: {fileID: 1000002}
   m_Layer: 0
-  m_Name: VRSL-AudioLink-GPU-Manager
+  m_Name: VRSL-AudioLink-GPU-LightManager
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -46,3 +46,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   computeShader: {fileID: 7200000, guid: ca42f410985d87d4c8a96afe809e2d1b, type: 3}
   lightingShader: {fileID: 4800000, guid: 656174862cac56e48afb69357cccdde6, type: 3}
+  goboTextures:
+  - {fileID: 2800000, guid: b01ba09b4a2acd34391cdd96cbf82837, type: 3}
+  - {fileID: 2800000, guid: f88fbf872df7f684b81df2ea631a8795, type: 3}
+  - {fileID: 2800000, guid: 21049496e985c0e449a8f23b2e93cbcf, type: 3}
+  - {fileID: 2800000, guid: 5aa1706064996fd4b826ec832e4efc2f, type: 3}
+  - {fileID: 2800000, guid: 389e8eded8de282458a5ae900f860150, type: 3}
+  - {fileID: 2800000, guid: c1f96cbea2ef4da468d88e096a5f3f64, type: 3}
+  - {fileID: 2800000, guid: ad20f072f311b2347a1053b14be0b73b, type: 3}
+  - {fileID: 2800000, guid: 0dd1884357d650e459cc1265cb73753a, type: 3}
