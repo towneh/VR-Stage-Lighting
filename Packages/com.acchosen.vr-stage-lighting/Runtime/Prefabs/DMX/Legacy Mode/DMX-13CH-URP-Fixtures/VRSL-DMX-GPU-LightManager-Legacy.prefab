@@ -47,6 +47,7 @@ MonoBehaviour:
   dmxMainTexture: {fileID: 8600000, guid: 3bcce6f0fa9c3d4499ca3015b073785e, type: 2}
   dmxMovementTexture: {fileID: 8600000, guid: 85ba02ef33f4e4c4a94d9085f48ec5c1, type: 2}
   dmxStrobeTexture: {fileID: 8600000, guid: 12347cc9d183cff41b75a6e1d133bff6, type: 2}
+  dmxSpinTimerTexture: {fileID: 8600000, guid: 6e9260e8140b1ea4a97d6cc9a137efca, type: 2}
   computeShader: {fileID: 7200000, guid: ec7eb1165a9951543ad4d764fceea4e4, type: 3}
   lightingShader: {fileID: 4800000, guid: 656174862cac56e48afb69357cccdde6, type: 3}
   goboTextures:

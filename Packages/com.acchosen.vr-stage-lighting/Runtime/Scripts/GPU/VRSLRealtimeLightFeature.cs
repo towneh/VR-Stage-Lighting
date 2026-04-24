@@ -35,6 +35,7 @@ namespace VRSL
                 public TextureHandle dmxMainTex;
                 public TextureHandle dmxMovementTex;
                 public TextureHandle dmxStrobeTex;
+                public TextureHandle dmxSpinTimerTex;
                 public ComputeShader cs;
                 public int           kernel;
                 public int           fixtureCount;
@@ -61,6 +62,9 @@ namespace VRSL
                 d.dmxStrobeTex        = mgr.DMXStrobeHandle != null
                     ? rg.ImportTexture(mgr.DMXStrobeHandle)
                     : TextureHandle.nullHandle;
+                d.dmxSpinTimerTex     = mgr.DMXSpinTimerHandle != null
+                    ? rg.ImportTexture(mgr.DMXSpinTimerHandle)
+                    : TextureHandle.nullHandle;
 
                 d.cs           = mgr.computeShader;
                 d.kernel       = mgr.ComputeKernel;
@@ -79,6 +83,8 @@ namespace VRSL
                     builder.UseTexture(d.dmxMovementTex, AccessFlags.Read);
                 if (d.dmxStrobeTex.IsValid())
                     builder.UseTexture(d.dmxStrobeTex,   AccessFlags.Read);
+                if (d.dmxSpinTimerTex.IsValid())
+                    builder.UseTexture(d.dmxSpinTimerTex, AccessFlags.Read);
 
                 builder.SetRenderFunc((PassData p, ComputeGraphContext ctx) =>
                 {
@@ -94,6 +100,8 @@ namespace VRSL
                         cmd.SetComputeTextureParam(p.cs, p.kernel, "_DMXMovementTex", p.dmxMovementTex);
                     if (p.dmxStrobeTex.IsValid())
                         cmd.SetComputeTextureParam(p.cs, p.kernel, "_DMXStrobeTex",   p.dmxStrobeTex);
+                    if (p.dmxSpinTimerTex.IsValid())
+                        cmd.SetComputeTextureParam(p.cs, p.kernel, "_DMXSpinTimerTex", p.dmxSpinTimerTex);
 
                     cmd.DispatchCompute(p.cs, p.kernel, Mathf.CeilToInt(p.fixtureCount / 64f), 1, 1);
                 });

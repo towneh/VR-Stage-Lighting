@@ -39,9 +39,9 @@ Shader "Hidden/VRSL/DeferredLighting"
 
             // Project a world-space surface point onto the light's gobo texture.
             // Returns a [0,1] greyscale mask value (1.0 when no gobo assigned).
-            // spinSpeed matches the volumetric shader's _SpinSpeed (range 0–10);
-            // uses the same formula: angle = _Time.w * 10 * spinSpeed (degrees).
-            float SampleGobo(float goboIdx, float spinSpeed, float3 posWS,
+            // spinAngle is the fully-integrated rotation in radians, wrapped to
+            // [-2π, 2π] by the compute shader — see VRSLDMXLightUpdate.compute.
+            float SampleGobo(float goboIdx, float spinAngle, float3 posWS,
                              float3 lightPos, float3 lightDir, float cosOuter)
             {
                 if (goboIdx < -0.5) return 1.0;
@@ -63,14 +63,13 @@ Shader "Hidden/VRSL/DeferredLighting"
                 float u = dot(toPixel, right) / (depth * tanHalf) * 0.5 + 0.5;
                 float v = dot(toPixel, up)    / (depth * tanHalf) * 0.5 + 0.5;
 
-                // Spin: rotate UV around the centre, matching volumetric _SpinSpeed formula.
-                // Wrap to [0,360) degrees before trig to avoid precision jitter once
-                // _Time.w grows large in long-running scenes.
-                if (spinSpeed != 0.0)
+                // Apply the pre-integrated spin angle directly. No _Time.w multiplication
+                // here: the compute shader reads the SpinnerTimer CRT (which accumulates
+                // phase over time), so rate changes never retroactively re-interpret past
+                // rotation and the gobo position stays continuous across DMX transitions.
+                if (spinAngle != 0.0)
                 {
-                    float angleDeg = fmod(_Time.w * 10.0 * spinSpeed, 360.0);
-                    float angle    = radians(angleDeg);
-                    float s = sin(angle), c = cos(angle);
+                    float s = sin(spinAngle), c = cos(spinAngle);
                     float cu = u - 0.5, cv = v - 0.5;
                     u = c * cu - s * cv + 0.5;
                     v = s * cu + c * cv + 0.5;

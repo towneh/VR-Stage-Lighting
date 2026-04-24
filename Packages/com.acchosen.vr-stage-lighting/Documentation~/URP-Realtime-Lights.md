@@ -185,6 +185,8 @@ float GetDMXValue(int ch, Texture2D<float4> tex)
 
 All three DMX textures share the same resolution in all VRSL CRT configurations, so a single `_VRSLDMXTexelSize` covers all three.
 
+A fourth texture, the **SpinnerTimer CRT** (`_Udon_DMXGridSpinTimer`), is also sampled — but in `.r`-raw mode, not via luminance. Its red channel stores `t += dt·rate` accumulated across frames by `DMXRTShader-SpinnerTimer.shader`, giving a continuous phase value that survives DMX rate changes without discontinuities. The compute shader reads this directly to drive gobo spin rotation, so the GPU path and volumetric path share the same time source.
+
 ### Pan/Tilt in a Compute Shader
 
 The original VRSL pan/tilt system works by rotating GameObjects: `VRStageLighting_DMX_Static.cs` writes pan and tilt angles into shader properties, and the fixture meshes (volumetric cone, projection, emissive body) are physically rotated by the pan and tilt transforms in the scene hierarchy.
@@ -228,7 +230,7 @@ All fields use `float4`/`Vector4` rather than `float3`/`Vector3`. HLSL `Structur
 | `directionAndType` | xyz = normalised direction, w = type (0=spot, 1=point) |
 | `colorAndIntensity` | xyz = linear RGB, w = combined intensity (dimmer × max × final × strobe) |
 | `spotCosines` | x = cos(innerHalfAngle), y = cos(outerHalfAngle), z = active flag (0 = skip light) |
-| `goboAndSpin` | x = gobo array index (-1 = none, 0+ = slice in `_VRSLGobos`), y = gobo spin speed (±10 bipolar) |
+| `goboAndSpin` | x = gobo array index (-1 = none, 0+ = slice in `_VRSLGobos`), y = integrated spin angle in radians (read from SpinnerTimer CRT, fmod 2π) |
 
 ### Full Pipeline Architecture
 
@@ -370,6 +372,7 @@ The GPU scripts live in `Runtime/Scripts/GPU/` under `VRSL.GPU.asmdef`, separate
    | `dmxMainTexture` | CRT producing `_Udon_DMXGridRenderTexture` |
    | `dmxMovementTexture` | CRT producing `_Udon_DMXGridRenderTextureMovement` |
    | `dmxStrobeTexture` | CRT producing `_Udon_DMXGridStrobeOutput` |
+   | `dmxSpinTimerTexture` | CRT producing `_Udon_DMXGridSpinTimer` (gobo spin phase) |
    | `computeShader` | `VRSLDMXLightUpdate` |
    | `lightingShader` | `Hidden/VRSL/DeferredLighting` |
 

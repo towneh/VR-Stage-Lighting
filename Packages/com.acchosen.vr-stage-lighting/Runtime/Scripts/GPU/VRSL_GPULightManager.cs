@@ -27,6 +27,10 @@ namespace VRSL
         public RenderTexture dmxMainTexture;
         public RenderTexture dmxMovementTexture;
         public RenderTexture dmxStrobeTexture;
+        [Tooltip("SpinnerTimer CRT (the CRT fed by DMXRTShader-SpinnerTimer). The GPU path "
+               + "samples its accumulated phase to drive gobo spin, matching the volumetric "
+               + "shader's getGoboSpinSpeed() so rate changes don't cause visible jumps.")]
+        public RenderTexture dmxSpinTimerTexture;
 
         [Header("Compute")]
         public ComputeShader computeShader;
@@ -46,6 +50,7 @@ namespace VRSL
         public RTHandle        DMXMainHandle       { get; private set; }
         public RTHandle        DMXMovementHandle   { get; private set; }
         public RTHandle        DMXStrobeHandle     { get; private set; }
+        public RTHandle        DMXSpinTimerHandle  { get; private set; }
         public Texture2DArray  GoboArray           { get; private set; }
         public int  FixtureCount   { get; private set; }
         public int  GoboCount      { get; private set; }
@@ -241,16 +246,18 @@ namespace VRSL
         void CreateTextureHandles()
         {
             ReleaseTextureHandles();
-            if (dmxMainTexture     != null) DMXMainHandle     = RTHandles.Alloc(dmxMainTexture);
-            if (dmxMovementTexture != null) DMXMovementHandle = RTHandles.Alloc(dmxMovementTexture);
-            if (dmxStrobeTexture   != null) DMXStrobeHandle   = RTHandles.Alloc(dmxStrobeTexture);
+            if (dmxMainTexture      != null) DMXMainHandle      = RTHandles.Alloc(dmxMainTexture);
+            if (dmxMovementTexture  != null) DMXMovementHandle  = RTHandles.Alloc(dmxMovementTexture);
+            if (dmxStrobeTexture    != null) DMXStrobeHandle    = RTHandles.Alloc(dmxStrobeTexture);
+            if (dmxSpinTimerTexture != null) DMXSpinTimerHandle = RTHandles.Alloc(dmxSpinTimerTexture);
         }
 
         void ReleaseTextureHandles()
         {
-            RTHandles.Release(DMXMainHandle);     DMXMainHandle     = null;
-            RTHandles.Release(DMXMovementHandle); DMXMovementHandle = null;
-            RTHandles.Release(DMXStrobeHandle);   DMXStrobeHandle   = null;
+            RTHandles.Release(DMXMainHandle);      DMXMainHandle      = null;
+            RTHandles.Release(DMXMovementHandle);  DMXMovementHandle  = null;
+            RTHandles.Release(DMXStrobeHandle);    DMXStrobeHandle    = null;
+            RTHandles.Release(DMXSpinTimerHandle); DMXSpinTimerHandle = null;
         }
 
         void BuildGoboArray()

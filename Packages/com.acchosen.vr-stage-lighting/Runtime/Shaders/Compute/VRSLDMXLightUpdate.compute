@@ -6,6 +6,7 @@
 Texture2D<float4> _DMXMainTex;
 Texture2D<float4> _DMXMovementTex;
 Texture2D<float4> _DMXStrobeTex;
+Texture2D<float4> _DMXSpinTimerTex;  // SpinnerTimer CRT — accumulates phase as t += dt·rate
 // All three textures share the same resolution in VRSL's CRT pipeline
 float4 _VRSLDMXTexelSize;   // x=1/w, y=1/h, z=width, w=height
 
@@ -46,6 +47,31 @@ float GetDMXValue(int ch, Texture2D<float4> tex)
 
     // LinearRgbToLuminance — matches CGINC standard (non-NineUniverse) path
     return c.r * 0.2126 + c.g * 0.7152 + c.b * 0.0722;
+}
+
+// Raw-channel variant — matches getValueAtCoordsRaw() in VRSL-DMXFunctions.cginc.
+// Needed for the SpinnerTimer, whose red channel stores accumulated phase (not a color).
+float GetDMXValueRaw(int ch, Texture2D<float4> tex)
+{
+    int x = ch % 13;
+    if (x == 0) x = 13;
+
+    float y = (ch % 13 == 0) ? (ch / 13.0) - 1.0 : (ch / 13.0);
+
+    if (x == 13)
+    {
+        if (ch >= 90   && ch <= 101)  y -= 1.0;
+        if (ch >= 160  && ch <= 205)  y -= 1.0;
+        if (ch >= 326  && ch <= 404)  y -= 1.0;
+        if (ch >= 676  && ch <= 819)  y -= 1.0;
+        if (ch >= 1339)               y -= 1.0;
+    }
+
+    float resMultX = _VRSLDMXTexelSize.z / 13.0;
+    float u = (x  * resMultX * _VRSLDMXTexelSize.x) - 0.015;
+    float v = ((y + 1.0) * resMultX * _VRSLDMXTexelSize.y) - 0.001915;
+
+    return tex.SampleLevel(sampler_point_clamp, float2(saturate(u), saturate(v)), 0).r;
 }
 
 // ── Rodrigues rotation ────────────────────────────────────────────────────────
@@ -147,20 +173,19 @@ void UpdateLights(uint3 id : SV_DispatchThreadID)
     // Mirrors getDMXGoboSelection() in VRSL-DMXFunctions: round(raw*255/30), clamp 1..N
     bool  enableGoboSpin = cfg.panSettings.w > 0.5;
     bool  enableGobo     = cfg.tiltSettings.w > 0.5;
-    float spinRaw   = GetDMXValue(absChannel + 10, _DMXMainTex);
-    float goboRaw   = enableGobo ? GetDMXValue(absChannel + 11, _DMXMainTex) : 0.0;
-    // Matches DMXRTShader-SpinnerTimer.shader + getGoboSpinSpeed(): DMX 0 = stopped,
-    // 1–127 = forward with rate=raw, 128–255 = reverse with rate=(raw-0.5).
-    //
-    // Scale derivation: volumetric's angle in radians is 4·T·rate (the degrees/radians
-    // wrapping cancels inside RotateUV), giving rate·(720/π) deg/sec. Our deferred pass
-    // uses radians(_Time.w·10·spinSpeed), i.e. 10·spinSpeed deg/sec. Matching them:
-    //   spinSpeed = rate · 72/π ≈ 22.918 · rate.
+    float spinStatus = GetDMXValue   (absChannel + 10, _DMXMainTex);      // luminance — picks direction
+    float spinPhase  = GetDMXValueRaw(absChannel + 10, _DMXSpinTimerTex); // accumulated phase from CRT
+    float goboRaw    = enableGobo ? GetDMXValue(absChannel + 11, _DMXMainTex) : 0.0;
+    // Mirrors getGoboSpinSpeed() in VRSL-DMXFunctions.cginc: direction is determined
+    // by the raw DMX value, magnitude is the integrated phase from SpinnerTimer CRT.
+    // The deferred pass uses this directly as radians, matching RotateUV(uv, degrees(·))
+    // (degrees/radians wrap cancels inside RotateUV). Wrapping to [-2π, 2π] via fmod
+    // bounds precision once the CRT's phase grows after hours of runtime.
     float spinSpeed = 0.0;
-    if (enableGoboSpin && spinRaw >= 0.01)
+    if (enableGoboSpin)
     {
-        float signedRate = spinRaw > 0.5 ? -(spinRaw - 0.5) : spinRaw;
-        spinSpeed = (72.0 / 3.14159265) * signedRate;
+        float angle = (spinStatus > 0.5) ? -spinPhase * 4.0 : spinPhase * 4.0;
+        spinSpeed = fmod(angle, 6.28318530718);
     }
     int goboIdx = -1;
     if (_VRSLGoboCount > 0)
