@@ -13,6 +13,7 @@ float4 _VRSLDMXTexelSize;   // x=1/w, y=1/h, z=width, w=height
 StructuredBuffer<VRSLFixtureConfig>   _FixtureConfigs;
 RWStructuredBuffer<VRSLLightData>     _LightData;
 uint                                   _FixtureCount;
+uint                                   _VRSLGoboCount;
 
 // Point-clamp inline sampler — matches tex2Dlod used in VRSL shader fixtures
 SamplerState sampler_point_clamp;
@@ -102,26 +103,40 @@ void UpdateLights(uint3 id : SV_DispatchThreadID)
         bool  invertTilt = cfg.tiltSettings.z > 0.5;
 
         // Pan — ch+0 coarse, ch+1 fine
+        // Formula matches GetPanValue() in VRSL-DMXFunctions.cginc:
+        // Static passes maxMinPan/2 as _MaxMinPanAngle → shader computes
+        // (maxMinPan/2 * 2 * raw) - maxMinPan/2 = maxMinPan * raw - maxMinPan/2.
         float panRaw = GetDMXValue(absChannel, _DMXMovementTex);
         if (enableFine) panRaw += GetDMXValue(absChannel + 1, _DMXMovementTex) / 256.0;
-        float panDeg = (maxMinPan * 2.0 * panRaw) - maxMinPan + panOffset;
+        float panDeg = (maxMinPan * panRaw) - (maxMinPan / 2.0) + panOffset;
         if (invertPan) panDeg = -panDeg;
 
-        // Tilt — ch+2 coarse, ch+3 fine
+        // Tilt — ch+2 coarse, ch+3 fine (same derivation as pan)
         float tiltRaw = GetDMXValue(absChannel + 2, _DMXMovementTex);
         if (enableFine) tiltRaw += GetDMXValue(absChannel + 3, _DMXMovementTex) / 256.0;
-        float tiltDeg = (maxMinTilt * 2.0 * tiltRaw) - maxMinTilt + tiltOffset;
+        float tiltDeg = (maxMinTilt * tiltRaw) - (maxMinTilt / 2.0) + tiltOffset;
         if (invertTilt) tiltDeg = -tiltDeg;
 
-        // Apply pan around base-up axis, then tilt around the resulting right axis
-        float3 pannedForward = RotateAroundAxis(baseForward, baseUp,        panDeg);
-        float3 pannedRight   = RotateAroundAxis(baseRight,   baseUp,        panDeg);
+        // Home right axis (tilt axis at pan=0) is world X.
+        // We cannot derive this from cross(baseForward, baseUp) because for a
+        // hanging fixture baseForward = -Y and baseUp = Y, making the cross
+        // product zero (gimbal lock). World X matches the shader's object-space
+        // X axis which is preserved under the standard 90° X root rotation.
+        float3 homeRight   = float3(1.0, 0.0, 0.0);
+        float3 pannedForward = RotateAroundAxis(baseForward, baseUp,   panDeg);
+        float3 pannedRight   = RotateAroundAxis(homeRight,   baseUp,   panDeg);
         finalDir             = RotateAroundAxis(pannedForward, pannedRight, tiltDeg);
     }
 
+    // ── Cone width — ch+4 (motor speed / zoom), matches getDMXConeWidth() ────
+    // spotAngles.y = max outer half-angle, spotAngles.w = min outer half-angle.
+    float coneRaw  = GetDMXValue(absChannel + 4, _DMXMainTex);
+    float outerHalf = lerp(cfg.spotAngles.w, cfg.spotAngles.y, coneRaw);
+    float innerHalf = outerHalf * 0.5;
+
     // ── Spot angle cosines ────────────────────────────────────────────────────
-    float innerCos = cos(radians(cfg.spotAngles.x));  // inner half-angle
-    float outerCos = cos(radians(cfg.spotAngles.y));  // outer half-angle
+    float innerCos = cos(radians(innerHalf));
+    float outerCos = cos(radians(outerHalf));
 
     // ── Write output ──────────────────────────────────────────────────────────
     VRSLLightData light;
@@ -131,6 +146,15 @@ void UpdateLights(uint3 id : SV_DispatchThreadID)
     // z = active flag: skip entirely if intensity is negligible
     light.spotCosines       = float4(innerCos, outerCos,
                                      combinedIntensity > 0.001 ? 1.0 : 0.0, 0.0);
-    light.cookieAndSpin     = float4(-1, 0, 0, 0); // DMX path: no cookie, no spin
+    // ── Gobo (ch+10 spin speed, ch+11 gobo select) ───────────────────────────
+    float spinRaw  = GetDMXValue(absChannel + 10, _DMXMainTex);
+    float goboRaw  = GetDMXValue(absChannel + 11, _DMXMainTex);
+    float spinSpeed = spinRaw * 10.0;
+    // Map goboRaw (0-1) to a slot index; values near 0 mean open (no gobo).
+    int cookieIdx = -1;
+    if (_VRSLGoboCount > 0 && goboRaw > 0.02)
+        cookieIdx = clamp((int)(goboRaw * (float)_VRSLGoboCount), 0, (int)_VRSLGoboCount - 1);
+
+    light.cookieAndSpin = float4((float)cookieIdx, spinSpeed, 0, 0);
     _LightData[idx] = light;
 }

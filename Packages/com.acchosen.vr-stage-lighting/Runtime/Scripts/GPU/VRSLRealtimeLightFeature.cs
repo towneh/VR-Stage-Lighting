@@ -38,6 +38,7 @@ namespace VRSL
                 public ComputeShader cs;
                 public int           kernel;
                 public int           fixtureCount;
+                public int           goboCount;
                 public Vector4       texelSize;
             }
 
@@ -64,6 +65,7 @@ namespace VRSL
                 d.cs           = mgr.computeShader;
                 d.kernel       = mgr.ComputeKernel;
                 d.fixtureCount = mgr.FixtureCount;
+                d.goboCount    = mgr.GoboCount;
                 d.texelSize    = new Vector4(
                     1f / mgr.dmxMainTexture.width,
                     1f / mgr.dmxMainTexture.height,
@@ -83,6 +85,7 @@ namespace VRSL
                     var cmd = ctx.cmd;
                     cmd.SetComputeVectorParam( p.cs,           "_VRSLDMXTexelSize", p.texelSize);
                     cmd.SetComputeIntParam(    p.cs,           "_FixtureCount",     p.fixtureCount);
+                    cmd.SetComputeIntParam(    p.cs,           "_VRSLGoboCount",    p.goboCount);
                     cmd.SetComputeBufferParam( p.cs, p.kernel, "_FixtureConfigs",   p.fixtureConfigBuffer);
                     cmd.SetComputeBufferParam( p.cs, p.kernel, "_LightData",        p.lightDataBuffer);
                     cmd.SetComputeTextureParam(p.cs, p.kernel, "_DMXMainTex",       p.dmxMainTex);
@@ -171,8 +174,13 @@ namespace VRSL
 
         public override void AddRenderPasses(ScriptableRenderer renderer, ref RenderingData renderingData)
         {
-            if (VRSL_GPULightManager.Instance == null) return;
+            var mgr = VRSL_GPULightManager.Instance;
+            if (mgr == null) return;
             _lightingPass.ConfigureInput(ScriptableRenderPassInput.Normal | ScriptableRenderPassInput.Depth);
+            // Cookie array is a plain Texture2DArray — set as a global here rather than
+            // inside the render graph where only TextureHandle is accepted.
+            if (mgr.CookieArray != null)
+                Shader.SetGlobalTexture("_VRSLCookies", mgr.CookieArray);
             renderer.EnqueuePass(_computePass);
             renderer.EnqueuePass(_lightingPass);
         }
