@@ -355,16 +355,16 @@ The `PassData` class per-pass pattern is the idiomatic Unity 6 render graph appr
 
 ### Component Inheritance — Sibling DMX_Static
 
-Every VRSL DMX fixture prefab carries two components on the same GameObject: the
-volumetric-side `VRStageLighting_DMX_Static` and the GPU-path
-`VRStageLighting_DMX_RealtimeLight`. Historically those two had to be kept in
-sync by hand — scene authors would override `sector`, `invertPan`, `tiltOffset`
-etc. on the Static component only, leaving the RealtimeLight at its prefab
-defaults, and the GPU light would silently read the wrong DMX row.
-
-`VRStageLighting_DMX_RealtimeLight` now defers to a sibling `DMX_Static` for
-everything the two components can both express. Inheritance triggers whenever
-`GetComponent<VRStageLighting_DMX_Static>()` returns non-null:
+Every VRSL DMX fixture prefab carries two components on the same GameObject:
+the volumetric-side `VRStageLighting_DMX_Static` that has always been the
+authoring surface for a fixture's DMX addressing and pan/tilt configuration,
+and the new GPU-path `VRStageLighting_DMX_RealtimeLight` that feeds the
+realtime light buffer. To avoid asking scene authors to learn a second
+inspector — and to guarantee the two rendering paths always agree on the same
+per-fixture values — `VRStageLighting_DMX_RealtimeLight` defers to a sibling
+`DMX_Static` for every setting the two components can both express.
+Inheritance triggers whenever `GetComponent<VRStageLighting_DMX_Static>()`
+returns non-null:
 
 | RealtimeLight field | Sibling Static field |
 |---|---|
