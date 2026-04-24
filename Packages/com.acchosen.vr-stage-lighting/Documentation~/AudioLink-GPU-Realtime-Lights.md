@@ -4,6 +4,20 @@ This document describes the design and implementation of extending VRSL's GPU re
 
 ---
 
+## Requirements
+
+| | Minimum |
+|---|---|
+| Unity | **6.0 LTS** or later |
+| Universal Render Pipeline | **17.0** or later (ships with Unity 6) |
+| URP Rendering Path | **Forward+** |
+| URP Renderer feature | **Depth Normals Prepass** enabled, **Depth Priming Mode** set to `Disabled` |
+| AudioLink | Installed and active in the scene (sets `_AudioTexture` as a global RenderTexture each frame) |
+
+Same Unity/URP version floor as the DMX GPU light path — both features depend on the Unity 6 Render Graph API, and the package's `VRSL.GPU` assembly is skipped automatically when URP isn't present. The AudioLink path does **not** require the DMX CRT chain; scenes can run AudioLink-only without GridReader or an Artnet source.
+
+---
+
 ## Background
 
 The DMX GPU realtime light path (see `URP-Realtime-Lights.md`) solved the problem of driving genuine scene illumination from VRSL fixture data without touching the CPU per-frame. Its data source is the DMX CRT texture chain — a pipeline that only exists when an Artnet/OSC signal is present and GridReader is active.
@@ -327,20 +341,19 @@ Emission colors in Unity are authored in gamma space via the color picker but mu
 
 ---
 
-## Known Limitations
+## Performance Model
 
-**No strobe channel.** The DMX path supports a dedicated strobe gate (a pre-computed binary on/off from `_Udon_DMXGridStrobeOutput`). AudioLink has no equivalent. Strobe effects must be implemented in the volumetric shaders (where they already exist) or by driving `finalIntensity` from a separate C# animator that manipulates the `VRStageLighting_AudioLink_RealtimeLight` component.
+The AudioLink GPU path shares the same scalability profile as the DMX GPU path documented in `URP-Realtime-Lights.md`. Re-stating it with AudioLink-specific numbers:
 
-**Color Chord uses a single representative pixel.** The color chord strip (`y=25`) is 128 pixels wide, encoding different chord colors at different x positions. The compute shader reads only `x=0` as a single representative. A future extension could sample multiple pixels across the strip and distribute them across fixture groups, or expose an `x` offset per fixture in `alParams`.
+**Per-frame CPU cost is bounded and tiny.** `UploadFixtureConfigs()` runs once per frame in `LateUpdate` and issues a single `GraphicsBuffer.SetData` of `N × 112 bytes`. For 100 fixtures that's ~10.9 KB/frame, well within typical `SetData` latency. No per-fixture decode, no per-fixture property-block update, no `Light` component write — all per-fixture work lives on the GPU.
 
-**Transparent geometry is not illuminated.** Identical to the DMX path — the additive lighting pass runs after opaques. AudioLink volumetric shaders remain the correct tool for haze and transparent materials.
+**No GPU→CPU readback.** The AudioLink texture never leaves the GPU. The compute shader samples `_AudioTexture` via integer `Load()` calls at whatever resolution AudioLink is running (typically 128×64). There is no async readback, no frame latency, no main-thread pressure from audio data.
 
-**No shadow casting.** Identical to the DMX path — bypassing Unity's `Light` component means no shadow maps are generated. See `URP-Realtime-Lights.md` Known Limitations for the full shadow cost discussion.
+**No shadow pass penalty.** Because the pipeline bypasses Unity's `Light` component entirely, URP does not generate a shadow map per fixture. For a 100-fixture wash rig this is the difference between sub-millisecond lighting cost and a shadow atlas that would eat the entire frame — see `URP-Realtime-Lights.md` → *The Shadow Map Rendering Wall* for the full analysis.
 
+**Per-fixture GPU cost is amortised.** The compute dispatch is `ceil(fixtureCount / 64)` groups × 64 threads — a single dispatch handles up to 64 fixtures in parallel. The fullscreen additive pass evaluates every light per illuminated pixel, but the loop body is small (distance attenuation, spot attenuation, optional gobo sample, NdotL). In practice both paths together (DMX + AudioLink simultaneously, if you patch the merged-buffer limitation under Known Limitations) contribute a few milliseconds at 1080p with 100+ fixtures on mid-range hardware.
 
-**Simultaneous DMX + AudioLink GPU paths are not supported.** Both `VRSLRealtimeLightFeature` and `VRSLAudioLinkRealtimeLightFeature` write to the same `_VRSLLights` / `_VRSLLightCount` globals, and the last lighting pass to execute overwrites the other. A future merged-buffer path would require extending `VRSLDeferredLighting.shader` to accept two separate buffers and light counts, or a dedicated merge pass that concatenates both into a single buffer before the lighting pass.
-
-**Filtered / smoothed amplitude not exposed.** AudioLink provides a filtered band response at `ALPASS_FILTEREDAUDIOLINK` (`x=0..15, y=28..31`) that is smoother than the raw band data. The current compute shader reads the raw amplitude from `y=0..3`. The `alParams` struct fields have room (`z` and `w` are partially used) but exposing a `useFiltered` flag is future work.
+The cost model is dominated entirely by the fullscreen pass's per-pixel light loop, not by fixture count on the CPU — so scaling to a large rig is a GPU-bandwidth discussion, not a CPU one.
 
 ---
 
@@ -348,13 +361,7 @@ Emission colors in Unity are authored in gamma space via the color picker but mu
 
 ### Prerequisites
 
-The URP Renderer Asset must already be configured for the GPU realtime light path:
-
-1. **Rendering Path** → `Forward+`
-2. **Depth Priming Mode** → `Disabled`
-3. **Depth Normals Prepass** → enabled
-
-These are shared requirements with `VRSLRealtimeLightFeature`. If the DMX renderer feature is already set up, the URP renderer is already configured correctly.
+All URP renderer requirements match the DMX GPU path — see the **Requirements** section at the top of this document. If `VRSLRealtimeLightFeature` is already installed in the URP Renderer, the renderer is configured correctly for AudioLink too; skip ahead to *Adding the AudioLink Renderer Feature*.
 
 ### Adding the AudioLink Renderer Feature
 
@@ -401,19 +408,20 @@ If the scene already has `VRSL-AudioLink-Mover-Spotlight` instances placed and a
    | `delay` | History delay (0 = most recent, 127 = most delayed). Useful for chasing effects. |
    | `bandMultiplier` | Sensitivity multiplier. Increase if the band amplitude is too low at your audio levels. |
    | `colorMode` | Emission (fixed), ThemeColor0–3, or ColorChord |
-   | `emissionColor` | Active when colorMode is Emission. Author in HDR for bright fixtures. |
-   | `realtimeLight` | The Unity `Light` component on this fixture. Range and spot angle read at config time. The component is automatically **disabled** in `Awake` to prevent URP Forward+ from processing it as a standard additional light alongside the GPU pass (which would cause double illumination). |
+   | `emissionColor` | Active when colorMode is Emission. Author in HDR for bright fixtures. Inherited from a sibling `AudioLink_Static`'s `lightColorTint` when present. |
    | `maxIntensity` | Peak lux at full amplitude. Tune per scene scale — start around 10–30 for indoor scenes. |
-   | `finalIntensity` | User-side intensity cap (0–1). Equivalent to Final Intensity on shader fixtures. |
-   | `goboIndex` | Gobo slot (1–8) into the manager's shared gobo wheel. 1 = Default (open beam), 2–8 = shaped gobos. Matches the **Select GOBO** slider on the AudioLink Static shader. The wheel is packed into a shared `Texture2DArray` built once by the manager — per-fixture texture overrides are not supported on this path. |
-   | `goboSpinSpeed` | Rotation speed for the projected gobo (−10..10, default 0). Matches the **Auto Spin Speed** (`_SpinSpeed`) property on the volumetric shader meshes — negative values spin in reverse. |
+   | `finalIntensity` | User-side intensity cap (0–1). Equivalent to Final Intensity on shader fixtures. Inherited from a sibling Static when present. |
+   | `spotAngle` / `range` | Cone outer half-angle (degrees) and attenuation range (metres). Read on every `UploadFixtureConfigs()` call, so changes take effect the next `LateUpdate` automatically. |
+   | `isPointLight` | Emit as a point light instead of a spot. |
+   | `goboIndex` | Gobo slot (1–8) into the manager's shared gobo wheel. 1 = Default (open beam), 2–8 = shaped gobos. Matches the **Select GOBO** slider on the AudioLink Static shader. Inherited from a sibling Static's `SelectGOBO`. The wheel is packed into a shared `Texture2DArray` built once by the manager — per-fixture texture overrides are not supported on this path. |
+   | `goboSpinSpeed` | Rotation speed for the projected gobo (−10..10, default 0). Matches the **Auto Spin Speed** (`_SpinSpeed`) property on the volumetric shader meshes. Phase is integrated on the GPU each frame; negative values spin in reverse. Inherited from a sibling Static's `SpinSpeed`. |
    | `enablePanTilt` | Enable for moving-head fixtures. |
    | `panTransform` | The transform rotated on Y for pan (its world position becomes the light origin). |
    | `tiltTransform` | The transform rotated on X for tilt (its world-space forward becomes the light direction). |
 
-3. Ensure the Unity `Light` component on each fixture is configured with an appropriate **Range** and **Spot Angle**. These values are read once when the GPU buffer is first built. If you change them at runtime, call `VRSL_AudioLinkGPULightManager.Instance.RefreshFixtures()`.
+   The GPU path does **not** use Unity's `Light` component — the per-fixture `VRStageLighting_AudioLink_RealtimeLight` carries every setting the deferred pass needs.
 
-   **Matching spot angles to the volumetric cone width:** The `_ConeWidth` property on the VRSL volumetric shader meshes and the Unity spotlight angles are independent systems — `_ConeWidth` is a mesh vertex displacement scalar, not an angle, so there is no formula to convert between them. Tune the two visually so the illumination footprint on surfaces aligns with the outer edge of the volumetric cone.
+3. **Matching spot angles to the volumetric cone width:** The `_ConeWidth` property on the VRSL volumetric shader meshes and the GPU cone angles are independent systems — `_ConeWidth` is a mesh vertex displacement scalar, not an angle, so there is no formula to convert between them. Tune the two visually so the illumination footprint on surfaces aligns with the outer edge of the volumetric cone.
 
    As a starting point for the standard AudioLink mover spotlight mesh at common `_ConeWidth` values:
 
@@ -456,6 +464,22 @@ VRSL_AudioLinkGPULightManager.Instance.RefreshFixtures();
 //   band, delay, bandMultiplier, colorMode, emissionColor,
 //   maxIntensity, finalIntensity, enableAudioLink, goboIndex, goboSpinSpeed
 ```
+
+---
+
+## Known Limitations
+
+**No strobe channel.** The DMX path supports a dedicated strobe gate (a pre-computed binary on/off from `_Udon_DMXGridStrobeOutput`). AudioLink has no equivalent. Strobe effects must be implemented in the volumetric shaders (where they already exist) or by driving `finalIntensity` from a separate C# animator that manipulates the `VRStageLighting_AudioLink_RealtimeLight` component.
+
+**Color Chord uses a single representative pixel.** The color chord strip (`y=25`) is 128 pixels wide, encoding different chord colors at different x positions. The compute shader reads only `x=0` as a single representative. A future extension could sample multiple pixels across the strip and distribute them across fixture groups, or expose an `x` offset per fixture in `alParams`.
+
+**Transparent geometry is not illuminated.** Identical to the DMX path — the additive lighting pass runs after opaques. AudioLink volumetric shaders remain the correct tool for haze and transparent materials.
+
+**No shadow casting.** Identical to the DMX path — bypassing Unity's `Light` component means no shadow maps are generated. See `URP-Realtime-Lights.md` Known Limitations for the full shadow cost discussion.
+
+**Simultaneous DMX + AudioLink GPU paths are not supported.** Both `VRSLRealtimeLightFeature` and `VRSLAudioLinkRealtimeLightFeature` write to the same `_VRSLLights` / `_VRSLLightCount` globals, and the last lighting pass to execute overwrites the other. A future merged-buffer path would require extending `VRSLDeferredLighting.shader` to accept two separate buffers and light counts, or a dedicated merge pass that concatenates both into a single buffer before the lighting pass.
+
+**Filtered / smoothed amplitude not exposed.** AudioLink provides a filtered band response at `ALPASS_FILTEREDAUDIOLINK` (`x=0..15, y=28..31`) that is smoother than the raw band data. The current compute shader reads the raw amplitude from `y=0..3`. The `alParams` struct fields have room (`z` and `w` are partially used) but exposing a `useFiltered` flag is future work.
 
 ---
 

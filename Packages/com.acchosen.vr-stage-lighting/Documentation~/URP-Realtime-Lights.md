@@ -4,13 +4,26 @@ This document describes the implementation journey of extending VRSL's GPU-drive
 
 ---
 
+## Requirements
+
+| | Minimum |
+|---|---|
+| Unity | **6.0 LTS** or later |
+| Universal Render Pipeline | **17.0** or later (ships with Unity 6) |
+| URP Rendering Path | **Forward+** |
+| URP Renderer feature | **Depth Normals Prepass** enabled, **Depth Priming Mode** set to `Disabled` |
+
+The GPU light pipeline relies on Unity 6's Render Graph API (`RecordRenderGraph`, `AddComputePass`, `AddRasterRenderPass`, `UniversalResourceData`) — none of which exist in URP 14–16. The package's `VRSL.GPU` assembly is gated by a `VRSL_URP` define emitted only when a compatible URP version is present, so the pipeline is automatically skipped in projects (VRChat worlds, any Built-in RP project) that don't ship URP — nothing to remove, nothing to fail to compile.
+
+---
+
 ## Background
 
 VRSL (VR Stage Lighting) was designed from the ground up for VRChat, where realtime Unity lights are prohibitively expensive and GPU-accelerated shader tricks are necessary to simulate stage lighting at scale. The core of the system encodes DMX512 data inside a video stream, decodes it through a chain of Custom Render Textures (CRTs) on the GPU, and drives HLSL shaders directly — colour, intensity, pan, tilt, strobe, and gobo selection are all resolved on the GPU, per-fragment, with no CPU involvement in the per-fixture calculation.
 
 This approach produces convincing volumetric beam and projection effects but does not illuminate scene geometry. Surfaces near a stage light look the same whether the light is on or off.
 
-In Unity 6.2+ with URP's **Forward+** rendering path, the cost model for realtime lights changed significantly. Forward+ moves per-tile light assignment to a GPU compute pass, removing the traditional per-object light limit and allowing hundreds of per-pixel lights with negligible CPU overhead. This makes it practical to replace VRSL's volumetric simulation with genuine scene-illuminating lights driven by the same DMX infrastructure — and, critically, to do so without ever involving the CPU in the per-frame lighting calculation.
+Unity 6's URP introduced the **Forward+** rendering path, which moves per-tile light assignment to a GPU compute pass and removes the traditional per-object light limit — hundreds of per-pixel lights with negligible CPU overhead. This makes it practical to replace VRSL's volumetric simulation with genuine scene-illuminating lights driven by the same DMX infrastructure, and, critically, to do so without ever involving the CPU in the per-frame lighting calculation.
 
 ---
 
@@ -461,10 +474,14 @@ The GPU scripts live in `Runtime/Scripts/GPU/` under `VRSL.GPU.asmdef`, separate
    | `lightingShader` | `Hidden/VRSL/DeferredLighting` |
 
 2. For each fixture, add **`VRStageLighting_DMX_RealtimeLight`** and configure:
-   - `dmxChannel` / `dmxUniverse` — matching your Artnet patch
-   - `maxIntensity` — lux value at DMX full-on (tune per scene scale)
-   - `realtimeLight` — the `Light` component for this fixture (spot or point). Range, spot angle, and inner spot angle are read once for the config buffer; the `Light` is not written at runtime
-   - For moving heads: enable `enablePanTilt`, assign `panTransform` and `tiltTransform`
+   - `dmxChannel` / `dmxUniverse` — matching your Artnet patch. If the GameObject also has a sibling `VRStageLighting_DMX_Static`, these (and `sector`, `useLegacySectorMode`) are inherited from it automatically; the fields are shown read-only in the inspector.
+   - `maxIntensity` — peak lux emitted at DMX full-on; tune per scene scale.
+   - `range` — light attenuation range in metres.
+   - `minSpotAngle` / `maxSpotAngle` — cone half-angles at DMX ch+4 = 0 and 255. Set `enableConeWidth = false` on static fixtures (par cans, blinders) to lock the cone at `maxSpotAngle` regardless of ch+4 traffic.
+   - `isPointLight` — emit as a point light instead of a spot.
+   - For moving heads: enable `enablePanTilt`. Pan/tilt inversion, range, and offsets inherit from a sibling `DMX_Static` when present; on bare fixtures they're edited directly on this component.
+
+   The GPU path does **not** use Unity's `Light` component — range, spot angles, colour, intensity, direction are all computed from the component fields and DMX data and delivered to the deferred pass via the fixture config buffer.
 
 3. Press Play. `RefreshFixtures()` runs on `OnEnable`, discovers all fixture components, creates the GPU buffers, and uploads the initial config.
 
