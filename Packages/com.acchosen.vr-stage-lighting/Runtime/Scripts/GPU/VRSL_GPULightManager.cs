@@ -157,46 +157,34 @@ namespace VRSL
 
         VRSLFixtureConfig BuildConfig(VRStageLighting_DMX_RealtimeLight f)
         {
-            Vector3 pos = f.enablePanTilt && f.panTransform != null
-                ? f.panTransform.position
-                : f.transform.position;
+            Vector3 pos = f.transform.position;
 
-            // Base forward: pointing down for hanging fixtures (VRSL default).
-            // Overridden by the associated Light component when present.
-            Vector3 baseForward = -f.transform.up;
+            // transform.forward = world -Y for a standard 90° X root fixture (no Light needed).
+            Vector3 baseForward = f.transform.forward;
             Vector3 panAxis     = Vector3.up;
 
-            int   lightType = 0;
-            float range     = 20f;
-            float innerHalf = 15f;
-            float outerHalf = 30f;
-
-            if (f.realtimeLight != null)
-            {
-                lightType   = f.realtimeLight.type == LightType.Spot ? 0 : 1;
-                range       = f.realtimeLight.range;
-                baseForward = f.realtimeLight.transform.forward;
-
-                if (f.realtimeLight.type == LightType.Spot)
-                {
-                    outerHalf = f.realtimeLight.spotAngle * 0.5f;
-                    innerHalf = f.realtimeLight.innerSpotAngle * 0.5f;
-                }
-            }
+            int   lightType    = f.isPointLight ? 1 : 0;
+            float minOuterHalf = f.minSpotAngle * 0.5f;
+            float outerHalf    = f.maxSpotAngle * 0.5f;
+            float innerHalf    = outerHalf * 0.5f;
 
             return new VRSLFixtureConfig
             {
-                positionAndRange  = new Vector4(pos.x, pos.y, pos.z, range),
+                positionAndRange  = new Vector4(pos.x, pos.y, pos.z, f.range),
                 forwardAndType    = new Vector4(baseForward.x, baseForward.y, baseForward.z, lightType),
                 upAndMaxIntensity = new Vector4(panAxis.x, panAxis.y, panAxis.z, f.maxIntensity),
-                spotAngles        = new Vector4(innerHalf, outerHalf, f.finalIntensity, 0f),
+                // spotAngles.y = max outer half-angle, spotAngles.w = min outer half-angle.
+                // The compute shader lerps between w and y based on DMX ch+4.
+                spotAngles        = new Vector4(innerHalf, outerHalf, f.finalIntensity, minOuterHalf),
                 dmxChannel        = new Vector4(
                     f.ComputeAbsoluteChannel(),
                     f.enableStrobe       ? 1f : 0f,
                     f.enablePanTilt      ? 1f : 0f,
                     f.enableFineChannels ? 1f : 0f),
                 panSettings  = new Vector4(f.maxMinPan,  f.panOffset,  f.invertPan  ? 1f : 0f, 0f),
-                tiltSettings = new Vector4(f.maxMinTilt, f.tiltOffset, f.invertTilt ? 1f : 0f, 0f),
+                // Subtract 90° from tiltOffset: baseForward already points down (world -Y)
+                // via transform.forward, so the 90° Rodrigues default must not be re-applied.
+                tiltSettings = new Vector4(f.maxMinTilt, f.tiltOffset - 90f, f.invertTilt ? 1f : 0f, 0f),
             };
         }
 

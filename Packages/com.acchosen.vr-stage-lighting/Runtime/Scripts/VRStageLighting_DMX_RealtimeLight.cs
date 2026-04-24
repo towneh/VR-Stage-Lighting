@@ -70,6 +70,12 @@ namespace VRSL
         [Tooltip("Spot angle in degrees when the cone-width DMX channel is at maximum (255).")]
         public float maxSpotAngle = 60f;
 
+        [Tooltip("Light range (attenuation radius) used by the GPU deferred light path.")]
+        public float range = 20f;
+
+        [Tooltip("Emit as a point light instead of a spot. Only affects the GPU deferred light path.")]
+        public bool isPointLight = false;
+
         // ──────────────────────────────────────────────────────────────────────────
         // Pan / Tilt (for moving-head fixtures)
         // ──────────────────────────────────────────────────────────────────────────
