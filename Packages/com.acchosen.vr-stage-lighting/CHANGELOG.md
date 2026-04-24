@@ -1,6 +1,6 @@
 # VR Stage Lighting - Changelog
 
-## 2.9.0 Change Log - April 22, 2026
+## 2.9.0 Change Log - April 24, 2026
 
 ### GPU Realtime Light Pipeline
 
