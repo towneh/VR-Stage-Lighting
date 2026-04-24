@@ -2,17 +2,47 @@
 
 ## 2.9.0 Change Log - April 22, 2026
 
-- Added a fully GPU-driven realtime light pipeline for **Unity 6 URP (Forward+)**. Fixtures now genuinely illuminate scene geometry — floors, walls, and props respond to the light show rather than just displaying volumetric beams.
+### GPU Realtime Light Pipeline
+
+- Added a fully GPU-driven realtime light pipeline for **Unity 6 LTS or later** running **URP 17+ in the Forward+ rendering path**. Fixtures now genuinely illuminate scene geometry — floors, walls, and props respond to the light show rather than just displaying volumetric beams.
 - The new pipeline is split into two render graph passes per data source:
-  - **Compute Pass** (`BeforeRenderingOpaques`): reads fixture config from a `StructuredBuffer` and writes per-fixture light data (position, direction, colour, intensity, cone angles) entirely on the GPU. No CPU work occurs per-frame per-fixture.
+  - **Compute Pass** (`BeforeRenderingOpaques`): reads fixture config from a `StructuredBuffer` and writes per-fixture light data (position, direction, colour, intensity, cone angles, gobo) entirely on the GPU.
   - **Lighting Pass** (`AfterRenderingOpaques`): a fullscreen additive triangle pass that reconstructs world-space positions from the depth buffer, reads the normals prepass, evaluates all active fixtures per pixel, and accumulates the result into the active colour target.
-- **DMX GPU path**: add a `VRStageLighting_DMX_RealtimeLight` component to any DMX fixture and register it with the `VRSL_GPULightManager` singleton. The compute shader reads the existing CRT RenderTextures directly — no changes to the DMX decode chain are required.
-- **AudioLink GPU path**: add a `VRStageLighting_AudioLink_RealtimeLight` component to any AudioLink mover fixture. The `VRSL_AudioLinkGPULightManager` singleton uploads fixture directions from animated transforms each frame and the compute shader reads amplitude and colour from the global `_AudioTexture`. Use the new **VRSL → Setup AudioLink GPU Realtime Lights in Scene** editor utility to configure an entire scene in one click.
+- **DMX GPU path**: add a `VRStageLighting_DMX_RealtimeLight` component to any DMX fixture and register it with the `VRSL_GPULightManager` singleton. The compute shader reads the existing CRT RenderTextures directly — no CPU work per frame per fixture, and no changes to the DMX decode chain are required.
+- **AudioLink GPU path**: add a `VRStageLighting_AudioLink_RealtimeLight` component to any AudioLink mover fixture. The `VRSL_AudioLinkGPULightManager` singleton uploads fixture directions from animated transforms each frame (~112 bytes per fixture — no GPU→CPU readback) and the compute shader reads amplitude and colour from the global `_AudioTexture`. Use the new **VRSL → Setup AudioLink GPU Realtime Lights in Scene** editor utility to configure an entire scene in one click.
 - Added `VRSLRealtimeLightFeature` and `VRSLAudioLinkRealtimeLightFeature` `ScriptableRendererFeature` assets for wiring up each path in your URP Renderer.
-- Added new GPU-ready prefabs: `VRSL-AudioLink-GPU-Manager`, `VRSL-AudioLink-Mover-Spotlight-GPU`, `VRSL-AudioLink-Mover-Washlight-GPU`, and DMX GPU Blinder/ParLight prefabs.
-- Added a new example scene (`VRSL-ExampleScene-AudioLink-URPRealtimeLights`) demonstrating the AudioLink GPU pipeline.
-- The entire GPU pipeline lives in a new `VRSL.GPU` assembly that only compiles when URP ≥ 14.0 is installed, keeping VRChat/UdonSharp builds completely unaffected.
+- Added new GPU-ready prefabs: `VRSL-AudioLink-GPU-Manager`, `VRSL-AudioLink-Mover-Spotlight-GPU`, `VRSL-AudioLink-Mover-Washlight-GPU`, `VRSL-AudioLink-Static-Blinder-GPU`, `VRSL-AudioLink-Static-ParLight-GPU`, plus DMX GPU Blinder, ParLight, Mover Spotlight and Mover Washlight prefabs across Horizontal / Vertical / Legacy modes.
+- Added new example scenes demonstrating both paths: `VRSL-ExampleScene-AudioLink-URPRealtimeLights`, `VRSL-ExampleScene-EditorViaOSC-Horizontal-URPRealtimeLights`, and `VRSL-ExampleScene-EditorViaOSC-Vertical-URPRealtimeLights`.
+- The entire GPU pipeline lives in a new `VRSL.GPU` assembly that only compiles when URP ≥ 17.0 is installed, keeping VRChat/UdonSharp builds completely unaffected.
+
+### Sibling-Component Inheritance
+
+- Realtime light components now inherit configuration from their sibling Static component on the same GameObject. Scene-level overrides flow through automatically — no duplicate fields to edit on both.
+  - **DMX side** — `VRStageLighting_DMX_RealtimeLight` inherits addressing (sector, useLegacySectorMode, dmxChannel, dmxUniverse), fine-channel mode, and every pan/tilt modifier (invertPan, invertTilt, maxMinPan, maxMinTilt, panOffset, tiltOffset) from a sibling `VRStageLighting_DMX_Static`.
+  - **AudioLink side** — `VRStageLighting_AudioLink_RealtimeLight` inherits AudioLink reaction params (enableAudioLink, band, delay, bandMultiplier), final intensity, emission colour, gobo selection and gobo spin speed from a sibling `VRStageLighting_AudioLink_Static`.
+
+### Custom Inspectors
+
+- New sectioned inspectors for both realtime light components matching the visual style of the Static editors — white bold section titles, consistent grouping (DMX/AudioLink Settings, General Settings, Movement Settings, Fixture Settings, Light Output Axis).
+- When a sibling Static is attached, the inherited fields render as read-only "(inherited)" widgets so the effective addressing and movement values are visible at a glance.
+- Shared `VRSL_EditorHeader` helper now draws the VRSL logo and version bar at the top of both the Static and realtime light inspectors — one source of truth for the header look.
+
+### Correctness & Behaviour Fixes
+
+- **`enableConeWidth` toggle** on the DMX realtime light — disable on fixtures without a zoom motor (par cans, blinders) to lock the cone at `maxSpotAngle`. Prevents spurious cone modulation from DMX ch+4 traffic on non-mover fixtures. Disabled by default on all static-fixture prefabs.
+- **DMX gobo spin** now reads pre-integrated phase from the SpinnerTimer CRT that drives the volumetric shader. Changing the DMX spin rate mid-show no longer causes the gobo position to jump.
+- **AudioLink gobo spin** is integrated on the GPU each frame and direction-flipped to match the volumetric cone's visible stripe rotation — GPU and volumetric now spin the same way at the same rate.
+- **Tilt rotation axis fix** — the compute shader now reads the fixture's local +X axis from the fixture config rather than assuming world +X. Movers with non-trivial root rotations (sectors rotated 180° around the (0,-1,1) axis) now track the volumetric cone correctly.
+- **Vertical and Legacy moving-head prefabs** corrected to `maxMinTilt: -180` to match Horizontal behaviour.
+- **Wash fixture cone widening** — AudioLink and DMX wash mover prefabs bumped to `minSpotAngle: 10` / `maxSpotAngle: 100` so the projected cone visually matches the volumetric's 2× wash scaling.
+- **Blinder prefabs** now set `localLightDirection` to local −Y so the GPU spot tracks the fixture's downward-facing lens mesh instead of its forward axis.
+- **AudioLink fixture prefabs** no longer ship with trailing empty `objRenderers` slots that caused `UnassignedReferenceException` on entering play mode.
+
+### Other Changes
+
 - Post-processing example assets split into separate URP and PPv2 variants.
+- Stale `Pan`/`Tilt`/`Light` child GameObjects and legacy script fields removed from the mover spotlight and washlight prefabs that predated the GPU path dropping its dependency on Unity's `Light` component.
+- Added comprehensive implementation guides under `Documentation~/`: `URP-Realtime-Lights.md` and `AudioLink-GPU-Realtime-Lights.md` covering requirements, pipeline architecture, performance model, setup, and known limitations for each path.
 
 ## 2.8.0 Change Log - May 21, 2024
 
