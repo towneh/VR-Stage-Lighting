@@ -390,7 +390,7 @@ MonoBehaviour:
   panTransform: {fileID: 202973597734218681}
   tiltTransform: {fileID: 8805735375257266712}
   maxMinPan: 180
-  maxMinTilt: 180
+  maxMinTilt: -180
   invertPan: 0
   invertTilt: 1
   panOffset: 0
