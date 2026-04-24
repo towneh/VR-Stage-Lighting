@@ -16,23 +16,23 @@ namespace VRSL
         SerializedProperty _delay;
         SerializedProperty _bandMultiplier;
 
-        // Color
+        // General Settings
+        SerializedProperty _maxIntensity;
+        SerializedProperty _finalIntensity;
         SerializedProperty _colorMode;
         SerializedProperty _emissionColor;
-
-        // Light Settings
-        SerializedProperty _maxIntensity;
+        SerializedProperty _isPointLight;
         SerializedProperty _spotAngle;
         SerializedProperty _range;
-        SerializedProperty _isPointLight;
-        SerializedProperty _goboIndex;
-        SerializedProperty _goboSpinSpeed;
-        SerializedProperty _finalIntensity;
 
-        // Pan / Tilt
+        // Movement Settings
         SerializedProperty _enablePanTilt;
         SerializedProperty _panTransform;
         SerializedProperty _tiltTransform;
+
+        // Fixture Settings
+        SerializedProperty _goboIndex;
+        SerializedProperty _goboSpinSpeed;
 
         static GUIStyle MakeSectionLabel()
         {
@@ -54,30 +54,30 @@ namespace VRSL
             _delay           = serializedObject.FindProperty("delay");
             _bandMultiplier  = serializedObject.FindProperty("bandMultiplier");
 
+            _maxIntensity    = serializedObject.FindProperty("maxIntensity");
+            _finalIntensity  = serializedObject.FindProperty("finalIntensity");
             _colorMode       = serializedObject.FindProperty("colorMode");
             _emissionColor   = serializedObject.FindProperty("emissionColor");
-
-            _maxIntensity    = serializedObject.FindProperty("maxIntensity");
+            _isPointLight    = serializedObject.FindProperty("isPointLight");
             _spotAngle       = serializedObject.FindProperty("spotAngle");
             _range           = serializedObject.FindProperty("range");
-            _isPointLight    = serializedObject.FindProperty("isPointLight");
-            _goboIndex       = serializedObject.FindProperty("goboIndex");
-            _goboSpinSpeed   = serializedObject.FindProperty("goboSpinSpeed");
-            _finalIntensity  = serializedObject.FindProperty("finalIntensity");
 
             _enablePanTilt   = serializedObject.FindProperty("enablePanTilt");
             _panTransform    = serializedObject.FindProperty("panTransform");
             _tiltTransform   = serializedObject.FindProperty("tiltTransform");
+
+            _goboIndex       = serializedObject.FindProperty("goboIndex");
+            _goboSpinSpeed   = serializedObject.FindProperty("goboSpinSpeed");
         }
 
         public override void OnInspectorGUI()
         {
             serializedObject.Update();
 
+            VRSL_EditorHeader.Draw();
+
             var rt = (VRStageLighting_AudioLink_RealtimeLight)target;
             var sibling = rt.GetComponent<VRStageLighting_AudioLink_Static>();
-            SerializedObject siblingSO = sibling != null ? new SerializedObject(sibling) : null;
-            if (siblingSO != null) siblingSO.Update();
 
             // ── AudioLink Settings ────────────────────────────────────────────
             GUILayout.Label("AudioLink Settings", _sectionLabel);
@@ -90,20 +90,15 @@ namespace VRSL
                     + "component. Edit those values there to keep both paths in sync.",
                     MessageType.Info);
 
+                // Render via GetEffective*() accessors as disabled widgets to bypass
+                // the sibling's [Header] attributes that would otherwise duplicate
+                // our section titles (enableAudioLink has [Header("Audio Link Settings")]).
                 using (new EditorGUI.DisabledScope(true))
                 {
-                    EditorGUILayout.PropertyField(
-                        siblingSO.FindProperty("enableAudioLink"),
-                        new GUIContent("Enable AudioLink (inherited)"));
-                    EditorGUILayout.PropertyField(
-                        siblingSO.FindProperty("band"),
-                        new GUIContent("Band (inherited)"));
-                    EditorGUILayout.PropertyField(
-                        siblingSO.FindProperty("delay"),
-                        new GUIContent("Delay (inherited)"));
-                    EditorGUILayout.PropertyField(
-                        siblingSO.FindProperty("bandMultiplier"),
-                        new GUIContent("Band Multiplier (inherited)"));
+                    EditorGUILayout.Toggle("Enable AudioLink (inherited)", rt.GetEffectiveEnableAudioLink());
+                    EditorGUILayout.EnumPopup("Band (inherited)",          rt.GetEffectiveBand());
+                    EditorGUILayout.IntSlider("Delay (inherited)",         rt.GetEffectiveDelay(), 0, 127);
+                    EditorGUILayout.Slider("Band Multiplier (inherited)",  rt.GetEffectiveBandMultiplier(), 1f, 15f);
                 }
             }
             else
@@ -117,69 +112,69 @@ namespace VRSL
             EditorGUILayout.Space();
             EditorGUILayout.Space();
 
-            // ── Color ─────────────────────────────────────────────────────────
-            GUILayout.Label("Color", _sectionLabel);
+            // ── General Settings ──────────────────────────────────────────────
+            GUILayout.Label("General Settings", _sectionLabel);
+            EditorGUILayout.PropertyField(_maxIntensity);
+
+            if (sibling != null)
+            {
+                using (new EditorGUI.DisabledScope(true))
+                    EditorGUILayout.Slider("Final Intensity (inherited)", rt.GetEffectiveFinalIntensity(), 0f, 1f);
+            }
+            else
+            {
+                EditorGUILayout.PropertyField(_finalIntensity);
+            }
+
             EditorGUILayout.PropertyField(_colorMode);
 
             if (sibling != null)
             {
-                EditorGUILayout.HelpBox(
-                    "Emission colour is inherited from the sibling AudioLink_Static's "
-                    + "lightColorTint when Color Mode is Emission. Theme/ColorChord modes "
-                    + "sample AudioLink directly and don't use this value.",
-                    MessageType.Info);
                 using (new EditorGUI.DisabledScope(true))
-                {
-                    EditorGUILayout.PropertyField(
-                        siblingSO.FindProperty("lightColorTint"),
-                        new GUIContent("Emission Color (inherited)"));
-                }
+                    EditorGUILayout.ColorField(
+                        new GUIContent("Emission Color (inherited)"),
+                        rt.GetEffectiveEmissionColor(),
+                        showEyedropper: true,
+                        showAlpha: false,
+                        hdr: true);
             }
             else
             {
                 EditorGUILayout.PropertyField(_emissionColor);
             }
 
+            EditorGUILayout.PropertyField(_isPointLight);
+            EditorGUILayout.PropertyField(_spotAngle);
+            EditorGUILayout.PropertyField(_range, new GUIContent("Spot Range", _range.tooltip));
+
             EditorGUILayout.Space();
             EditorGUILayout.Space();
 
-            // ── Light Settings ────────────────────────────────────────────────
-            GUILayout.Label("Light Settings", _sectionLabel);
-            EditorGUILayout.PropertyField(_maxIntensity);
-            EditorGUILayout.PropertyField(_spotAngle);
-            EditorGUILayout.PropertyField(_range);
-            EditorGUILayout.PropertyField(_isPointLight);
+            // ── Movement Settings ─────────────────────────────────────────────
+            GUILayout.Label("Movement Settings", _sectionLabel);
+            EditorGUILayout.PropertyField(_enablePanTilt);
+            EditorGUILayout.PropertyField(_panTransform);
+            EditorGUILayout.PropertyField(_tiltTransform);
+
+            EditorGUILayout.Space();
+            EditorGUILayout.Space();
+
+            // ── Fixture Settings ──────────────────────────────────────────────
+            GUILayout.Label("Fixture Settings", _sectionLabel);
 
             if (sibling != null)
             {
                 using (new EditorGUI.DisabledScope(true))
                 {
-                    EditorGUILayout.PropertyField(
-                        siblingSO.FindProperty("selectGOBO"),
-                        new GUIContent("Gobo Index (inherited)"));
-                    EditorGUILayout.PropertyField(
-                        siblingSO.FindProperty("spinSpeed"),
-                        new GUIContent("Gobo Spin Speed (inherited)"));
-                    EditorGUILayout.PropertyField(
-                        siblingSO.FindProperty("finalIntensity"),
-                        new GUIContent("Final Intensity (inherited)"));
+                    EditorGUILayout.IntSlider("Gobo Index (inherited)",       rt.GetEffectiveGoboIndex(), 1, 8);
+                    EditorGUILayout.Slider("Gobo Spin Speed (inherited)",     rt.GetEffectiveGoboSpinSpeed(), -10f, 10f);
                 }
             }
             else
             {
                 EditorGUILayout.PropertyField(_goboIndex);
                 EditorGUILayout.PropertyField(_goboSpinSpeed);
-                EditorGUILayout.PropertyField(_finalIntensity);
             }
-
-            EditorGUILayout.Space();
-            EditorGUILayout.Space();
-
-            // ── Pan / Tilt (Moving Head) ──────────────────────────────────────
-            GUILayout.Label("Pan / Tilt (Moving Head)", _sectionLabel);
-            EditorGUILayout.PropertyField(_enablePanTilt);
-            EditorGUILayout.PropertyField(_panTransform);
-            EditorGUILayout.PropertyField(_tiltTransform);
 
             serializedObject.ApplyModifiedProperties();
         }

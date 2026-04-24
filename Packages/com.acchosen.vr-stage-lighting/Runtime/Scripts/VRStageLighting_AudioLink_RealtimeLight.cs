@@ -28,7 +28,6 @@ namespace VRSL
 #endif
     {
         // ── AudioLink ─────────────────────────────────────────────────────────
-        [Header("AudioLink Settings")]
         [Tooltip("Enable or disable AudioLink reaction for this fixture. When disabled the light contributes zero intensity to the scene. "
                + "Ignored when a sibling VRStageLighting_AudioLink_Static is present — inherited from it.")]
         public bool enableAudioLink = true;
@@ -48,7 +47,6 @@ namespace VRSL
         public float bandMultiplier = 1f;
 
         // ── Color ─────────────────────────────────────────────────────────────
-        [Header("Color")]
         [Tooltip("Source for the light color.\n"
                + "Emission: fixed color below.\n"
                + "ThemeColor0–3: AudioLink theme palette.\n"
@@ -61,7 +59,6 @@ namespace VRSL
         public Color emissionColor = Color.white;
 
         // ── Light ─────────────────────────────────────────────────────────────
-        [Header("Light Settings")]
         [Tooltip("Peak light intensity (lux) at AudioLink full amplitude (1.0). Tune per scene scale.")]
         public float maxIntensity = 10f;
 
@@ -90,7 +87,6 @@ namespace VRSL
         public float finalIntensity = 1f;
 
         // ── Pan / Tilt ────────────────────────────────────────────────────────
-        [Header("Pan / Tilt (Moving Head)")]
         [Tooltip("Enable per-frame world transform read for moving-head direction. "
                + "The animation system rotates the transforms; this component reads the result.")]
         public bool enablePanTilt = false;

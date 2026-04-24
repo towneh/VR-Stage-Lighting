@@ -504,10 +504,7 @@ namespace VRSL.EditorScripts
 #if UDONSHARP
             if (UdonSharpGUI.DrawDefaultUdonSharpBehaviourHeader(target)) return;
 #endif
-            DrawLogo();
-            ShurikenHeaderCentered(GetVersion());
-            EditorGUILayout.Space();
-            EditorGUILayout.Space();
+            VRSL_EditorHeader.Draw();
 
             VRStageLighting_AudioLink_Static fixture = (VRStageLighting_AudioLink_Static)target;
             EditorGUI.BeginChangeCheck();
