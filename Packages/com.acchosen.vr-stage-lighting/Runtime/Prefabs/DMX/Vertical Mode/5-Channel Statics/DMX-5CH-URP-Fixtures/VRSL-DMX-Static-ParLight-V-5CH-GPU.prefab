@@ -102,6 +102,7 @@ MonoBehaviour:
   maxIntensity: 10
   finalIntensity: 1
   enableStrobe: 1
+  enableConeWidth: 0
   minSpotAngle: 5
   maxSpotAngle: 60
   range: 20

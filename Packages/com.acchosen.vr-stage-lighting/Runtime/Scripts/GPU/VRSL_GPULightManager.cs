@@ -219,8 +219,10 @@ namespace VRSL
             Vector3 baseRight   = f.transform.right;
 
             int   lightType    = f.isPointLight ? 1 : 0;
-            float minOuterHalf = f.minSpotAngle * 0.5f;
             float outerHalf    = f.maxSpotAngle * 0.5f;
+            // When enableConeWidth is false, collapse minOuter == outerHalf so the compute
+            // shader's lerp over DMX ch+4 is a no-op and the cone stays fixed at maxSpotAngle.
+            float minOuterHalf = f.enableConeWidth ? f.minSpotAngle * 0.5f : outerHalf;
             float innerHalf    = outerHalf * 0.5f;
 
             return new VRSLFixtureConfig

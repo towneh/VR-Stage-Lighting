@@ -56,10 +56,17 @@ namespace VRSL
         [Tooltip("Allow DMX strobe channel to gate this light on/off.")]
         public bool enableStrobe = true;
 
-        [Tooltip("Spot angle in degrees when the cone-width DMX channel (ch+4) is at minimum (0).")]
+        [Tooltip("Allow DMX channel +4 (motor speed / zoom) to modulate the spot cone between "
+               + "minSpotAngle and maxSpotAngle. Disable for fixtures without a zoom motor "
+               + "(par cans, blinders) so their cone stays locked at maxSpotAngle.")]
+        public bool enableConeWidth = true;
+
+        [Tooltip("Spot angle in degrees when the cone-width DMX channel (ch+4) is at minimum (0). "
+               + "Ignored when enableConeWidth is false.")]
         public float minSpotAngle = 5f;
 
-        [Tooltip("Spot angle in degrees when the cone-width DMX channel (ch+4) is at maximum (255).")]
+        [Tooltip("Spot angle in degrees when the cone-width DMX channel (ch+4) is at maximum (255). "
+               + "Also used as the fixed cone angle when enableConeWidth is false.")]
         public float maxSpotAngle = 60f;
 
         [Tooltip("Light attenuation range. Increase for larger spaces.")]
