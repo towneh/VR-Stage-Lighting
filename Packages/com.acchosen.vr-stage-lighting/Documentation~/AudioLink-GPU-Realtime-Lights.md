@@ -218,6 +218,109 @@ The `PassData` class per-pass pattern, `rg.ImportBuffer`, `rg.ImportTexture`, an
 
 The lighting pass calls `cmd.SetGlobalBuffer` and `cmd.SetGlobalInteger` to publish `_VRSLLights` and `_VRSLLightCount` for the fragment shader. In Unity 6 URP the native render pass compiler prohibits global state mutation from raster passes by default. The builder must declare `builder.AllowGlobalStateModification(true)` before `SetRenderFunc`, or Unity throws `InvalidOperationException: Modifying global state from this command buffer is not allowed`. `ConfigureInput` must be called in `AddRenderPasses`, not `SetupRenderPasses` — the latter override does not exist on `ScriptableRendererFeature` in this Unity 6 URP version.
 
+### Component Inheritance — Sibling AudioLink_Static
+
+Every AudioLink GPU fixture prefab carries two components on the same
+GameObject: the volumetric-side `VRStageLighting_AudioLink_Static` and the
+GPU-path `VRStageLighting_AudioLink_RealtimeLight`. To spare scene authors
+having to override parallel fields on both, the RealtimeLight now defers to a
+sibling Static for every setting the two components can both express. The
+Static's public property accessors (`EnableAudioLink`, `Band`, `Delay`,
+`BandMultiplier`, `LightColorTint`, `SpinSpeed`, `SelectGOBO`) plus the public
+`finalIntensity` field feed the `GetEffective*()` accessors on the
+RealtimeLight:
+
+| RealtimeLight field | Sibling Static source |
+|---|---|
+| `enableAudioLink` | `EnableAudioLink` |
+| `band` | `Band` |
+| `delay` | `Delay` |
+| `bandMultiplier` | `BandMultiplier` |
+| `finalIntensity` | `finalIntensity` |
+| `emissionColor` | `LightColorTint` |
+| `goboSpinSpeed` | `SpinSpeed` |
+| `goboIndex` | `SelectGOBO` |
+
+`VRSL_AudioLinkGPULightManager.BuildConfig()` calls those accessors instead of
+reading fields directly, so overriding AudioLink reaction / colour / gobo
+settings on the Static component at the scene level propagates to the GPU path
+automatically. No sibling present → fallback to the RealtimeLight's own
+fields, same as the DMX path.
+
+### Gobo Spin Integration on the GPU
+
+The DMX path integrates gobo spin phase via the `_Udon_DMXGridSpinTimer` CRT —
+a texture that accumulates `t += dt · rate` across frames, which the compute
+shader samples directly. AudioLink has no equivalent CRT chain, so phase is
+integrated in the compute kernel itself.
+
+`VRSLAudioLinkRealtimeLightFeature` passes `Time.timeSinceLevelLoad` into the
+compute as the `_VRSLTime` uniform each frame. The kernel computes:
+
+```hlsl
+float spinPhase = fmod(spinSpeed * _VRSLTime * -0.34906585, 6.28318530718);
+```
+
+- The negative sign matches the volumetric fragment's
+  `spinSpeed *= -goboSpinSpeed` convention so the GPU-projected gobo rotates
+  the same direction as the visible stripe pattern in the volumetric cone.
+- `0.34906585` is `π/9` — 2× the projection shader's `10 · spinSpeed` degrees
+  rate, picked empirically to match the volumetric's visible rotation speed in
+  typical scenes.
+- `fmod` to `[-2π, 2π]` keeps the phase bounded so `sin`/`cos` in the deferred
+  pass don't lose precision over long runs.
+
+The phase is written to `goboAndSpin.y` and consumed directly as radians by
+`SampleGobo` in `VRSLDeferredLighting.shader` — the deferred pass applies the
+rotation without any further `_Time` multiplication, so rate changes never
+retroactively re-interpret past rotation.
+
+### Empty Renderer-Slot Pitfall
+
+The `objRenderers` array on `VRStageLighting_AudioLink_Static` drives the
+volumetric property-block updates. If a trailing slot is left unassigned
+(`fileID: 0`), the `case 2` branch of `_UpdateInstancedProperties` blindly
+dereferences it and throws `UnassignedReferenceException` when the editor's
+`PlayModeStateChanged.LoadFixtureSettings` hook runs on entering play mode.
+
+The shipped AudioLink GPU fixture prefabs have their arrays trimmed; if you
+build a new fixture from scratch, make sure the array contains only populated
+entries.
+
+### Wash Cone Angle Defaults
+
+The volumetric mover shader's `CalculateConeWidth` applies a wash-specific
+`scalar *= 2.0; scalar -= 2.5` multiplication so wash cones are visibly wider
+than spots at the same DMX cone width. The GPU path does a flat
+`lerp(minOuter, maxOuter, coneRaw)` and previously used the same `5°/50°` as
+spots on wash prefabs, making the projected wash footprint narrower than the
+volumetric. The current wash GPU prefabs (`VRSL-DMX-Mover-WashLight-*-13CH-GPU`
+and the Legacy variant) ship with `minSpotAngle: 10`, `maxSpotAngle: 100` to
+roughly match the 2× factor. Set your own values larger on hand-authored wash
+fixtures if the projected cone reads too tight.
+
+### Custom Inspector
+
+`Editor/VRStageLighting_AudioLink_RealtimeLightEditor.cs` provides the
+AudioLink-side counterpart to the DMX custom inspector. It uses the same
+shared `VRSL_EditorHeader` helper for the logo and version bar, and groups
+fields into sections that mirror the conceptual grouping of the AudioLink
+Static editor:
+
+- **AudioLink Settings** — reaction toggle, band, delay, band multiplier
+- **General Settings** — max intensity, final intensity, colour mode, emission
+  colour, point-light flag, spot angle, spot range
+- **Movement Settings** — pan/tilt enable and transform references
+- **Fixture Settings** — gobo index and spin speed
+
+When a sibling `AudioLink_Static` is attached, the inheriting fields
+(AudioLink reaction params, final intensity, emission colour, gobo) render as
+disabled "(inherited)" widgets backed by the `GetEffective*()` accessors
+rather than the sibling's `SerializedProperty`. This bypasses the sibling's
+`[Header]` attributes (`[Header("Audio Link Settings")]`,
+`[Header("Fixture Settings")]`) which would otherwise duplicate the custom
+section titles.
+
 ### Emission Color Gamma Handling
 
 Emission colors in Unity are authored in gamma space via the color picker but must be in linear space for physically correct lighting math in URP. `BuildConfig` calls `f.emissionColor.linear` before packing into the `emissionColor` Vector4 field. This matches the convention used by URP's own light color pipeline. AudioLink theme and color chord colors are already linear — they are set by the AudioLink system in linear space and should not be converted again.
@@ -365,4 +468,6 @@ VRSL_AudioLinkGPULightManager.Instance.RefreshFixtures();
 | `Runtime/Scripts/GPU/VRSLAudioLinkRealtimeLightFeature.cs` | VRSL.GPU | URP `ScriptableRendererFeature`. Schedules compute pass (AudioLink → light buffer) and lighting pass (fullscreen additive) via Unity 6 Render Graph API. |
 | `Runtime/Shaders/Compute/VRSLAudioLinkLightUpdate.compute` | — | Compute kernel `UpdateLights`. Samples `_AudioTexture` for amplitude and color using integer `Load()` calls, reads world forward from config, passes gobo index and spin speed from `reserved` through to `VRSLLightData.goboAndSpin`. 64 threads/group. |
 | `Runtime/Shaders/Shared/VRSLLightingLibrary.hlsl` | — | Extended with `VRSLALFixtureConfig` struct (7×float4, 112 bytes). `VRSLLightData` (5×float4, 80 bytes) and all lighting evaluation functions are shared between DMX and AudioLink paths. |
-| `Runtime/Shaders/VRSLDeferredLighting.shader` | — | Fullscreen additive pass shared by both GPU paths. Contains `SampleGobo()` — a perspective-projection function that derives light-space right/up from `lightDir`, reprojects the world surface point to UV using `tanHalf` from the stored `cosOuter`, and applies a time-based UV rotation (`_Time.w * 10 * goboSpinSpeed` degrees) before sampling `_VRSLGobos`. The `Texture2DArray _VRSLGobos` is bound via `Shader.SetGlobalTexture` in `AddRenderPasses` (not inside the render graph, where only `TextureHandle` is accepted). |
+| `Runtime/Shaders/VRSLDeferredLighting.shader` | — | Fullscreen additive pass shared by both GPU paths. Contains `SampleGobo()` — a perspective-projection function that derives light-space right/up from `lightDir`, reprojects the world surface point to UV using `tanHalf` from the stored `cosOuter`, and applies the pre-integrated rotation from `goboAndSpin.y` (radians) directly to the UV before sampling `_VRSLGobos`. No `_Time.w` multiplication happens in the shader — both the DMX path (sampling the SpinnerTimer CRT) and the AudioLink path (integrating `spinSpeed · _VRSLTime` on the GPU) write a fully integrated phase. The `Texture2DArray _VRSLGobos` is bound via `Shader.SetGlobalTexture` in `AddRenderPasses` (not inside the render graph, where only `TextureHandle` is accepted). |
+| `Editor/VRStageLighting_AudioLink_RealtimeLightEditor.cs` | VRSL.Editor | Custom inspector; section layout, sibling-inherited read-only field display, shared logo/version header via `VRSL_EditorHeader`. |
+| `Editor/VRSL_EditorHeader.cs` | VRSL.Editor | Shared VRSL logo + version bar drawing helper; used by both the AudioLink Static editor and the realtime light editors (DMX and AudioLink) — one source of truth for the header look. |
