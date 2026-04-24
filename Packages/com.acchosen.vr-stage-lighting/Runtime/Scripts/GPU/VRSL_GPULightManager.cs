@@ -84,6 +84,39 @@ namespace VRSL
         List<VRStageLighting_DMX_RealtimeLight> _fixtures = new();
         bool _configDirty = true;
 
+#if UNITY_EDITOR
+        // Called by Unity when the component is first added or the context-menu Reset is chosen.
+        void Reset() => LoadDefaultGoboWheel();
+
+        [ContextMenu("Load Default Gobo Wheel")]
+        void LoadDefaultGoboWheel()
+        {
+            const string folder =
+                "Packages/com.acchosen.vr-stage-lighting/Runtime/Textures/MoverLightTextures/GOBO/IndividualGobos";
+
+            var guids = UnityEditor.AssetDatabase.FindAssets("t:Texture2D", new[] { folder });
+            var list  = new List<Texture2D>();
+            foreach (var guid in guids)
+            {
+                var tex = UnityEditor.AssetDatabase.LoadAssetAtPath<Texture2D>(
+                    UnityEditor.AssetDatabase.GUIDToAssetPath(guid));
+                if (tex != null) list.Add(tex);
+            }
+
+            // Default gobo first (matches shader slot 1 = lowest DMX values), then alphabetically
+            list.Sort((a, b) =>
+            {
+                bool aD = a.name.Contains("Default");
+                bool bD = b.name.Contains("Default");
+                if (aD != bD) return aD ? -1 : 1;
+                return string.Compare(a.name, b.name, System.StringComparison.Ordinal);
+            });
+
+            goboTextures = list.ToArray();
+            UnityEditor.EditorUtility.SetDirty(this);
+        }
+#endif
+
         // ── Lifecycle ─────────────────────────────────────────────────────────
         void Awake()
         {

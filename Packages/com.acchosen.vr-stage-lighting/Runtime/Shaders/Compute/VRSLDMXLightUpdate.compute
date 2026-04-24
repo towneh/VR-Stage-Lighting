@@ -147,13 +147,17 @@ void UpdateLights(uint3 id : SV_DispatchThreadID)
     light.spotCosines       = float4(innerCos, outerCos,
                                      combinedIntensity > 0.001 ? 1.0 : 0.0, 0.0);
     // ── Gobo (ch+10 spin speed, ch+11 gobo select) ───────────────────────────
-    float spinRaw  = GetDMXValue(absChannel + 10, _DMXMainTex);
-    float goboRaw  = GetDMXValue(absChannel + 11, _DMXMainTex);
+    // Mirrors getDMXGoboSelection() in VRSL-DMXFunctions: round(raw*255/30), clamp 1..N
+    float spinRaw   = GetDMXValue(absChannel + 10, _DMXMainTex);
+    float goboRaw   = GetDMXValue(absChannel + 11, _DMXMainTex);
     float spinSpeed = spinRaw * 10.0;
-    // Map goboRaw (0-1) to a slot index; values near 0 mean open (no gobo).
     int cookieIdx = -1;
-    if (_VRSLGoboCount > 0 && goboRaw > 0.02)
-        cookieIdx = clamp((int)(goboRaw * (float)_VRSLGoboCount), 0, (int)_VRSLGoboCount - 1);
+    if (_VRSLGoboCount > 0)
+    {
+        int slot = (int)round(goboRaw * 255.0 / 30.0);
+        slot      = clamp(slot, 1, (int)_VRSLGoboCount);
+        cookieIdx = slot - 1; // convert to 0-based array index
+    }
 
     light.cookieAndSpin = float4((float)cookieIdx, spinSpeed, 0, 0);
     _LightData[idx] = light;
