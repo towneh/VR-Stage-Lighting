@@ -88,8 +88,6 @@ void UpdateLights(uint3 id : SV_DispatchThreadID)
 
     // ── Direction (pan/tilt for moving heads) ─────────────────────────────────
     float3 baseForward = cfg.forwardAndType.xyz;
-    float3 baseUp      = cfg.upAndMaxIntensity.xyz;         // pan rotation axis
-    float3 baseRight   = normalize(cross(baseForward, baseUp));
     float3 finalDir    = baseForward;
 
     if (enablePanTilt)
@@ -117,15 +115,14 @@ void UpdateLights(uint3 id : SV_DispatchThreadID)
         float tiltDeg = (maxMinTilt * tiltRaw) - (maxMinTilt / 2.0) + tiltOffset;
         if (invertTilt) tiltDeg = -tiltDeg;
 
-        // Home right axis (tilt axis at pan=0) is world X.
-        // We cannot derive this from cross(baseForward, baseUp) because for a
-        // hanging fixture baseForward = -Y and baseUp = Y, making the cross
-        // product zero (gimbal lock). World X matches the shader's object-space
-        // X axis which is preserved under the standard 90° X root rotation.
-        float3 homeRight   = float3(1.0, 0.0, 0.0);
-        float3 pannedForward = RotateAroundAxis(baseForward, baseUp,   panDeg);
-        float3 pannedRight   = RotateAroundAxis(homeRight,   baseUp,   panDeg);
-        finalDir             = RotateAroundAxis(pannedForward, pannedRight, tiltDeg);
+        // Matches the volumetric shader: tilt around world X (object X, preserved
+        // under the 90° X root rotation) first, then pan around baseForward (object Z
+        // = world -Y for a hanging fixture). The old approach (pan around world +Y
+        // first) failed because baseForward is anti-parallel to world +Y, making the
+        // Rodrigues rotation a no-op for pan.
+        float3 homeRight     = float3(1.0, 0.0, 0.0);
+        float3 tiltedForward = RotateAroundAxis(baseForward,   homeRight,   tiltDeg);
+        finalDir             = RotateAroundAxis(tiltedForward, baseForward, panDeg);
     }
 
     // ── Cone width — ch+4 (motor speed / zoom), matches getDMXConeWidth() ────
