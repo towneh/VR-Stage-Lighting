@@ -30,17 +30,21 @@ namespace VRSL
         [Tooltip("Enable 16-bit fine-channel resolution for pan and tilt.")]
         public bool enableFineChannels = false;
 
-        [Tooltip("Industry-standard DMX start channel (1-512 per universe).")]
-        public int dmxChannel = 1;
-
-        [Tooltip("Artnet universe (1-based).")]
-        public int dmxUniverse = 1;
-
-        [Tooltip("Use legacy sector-based addressing instead of industry-standard channels.")]
+        [Tooltip("Use legacy sector-based addressing instead of industry-standard channels. "
+               + "Ignored when a sibling VRStageLighting_DMX_Static is present — addressing "
+               + "is inherited from it so scene overrides only need to be set in one place.")]
         public bool useLegacySectorMode = false;
 
-        [Tooltip("Sector number when using legacy mode. Sector 0 = channels 1-13, Sector 1 = 14-26, etc.")]
+        [Tooltip("Sector number when using legacy mode. Sector 0 = channels 1-13, Sector 1 = 14-26, etc. "
+               + "Ignored when a sibling DMX_Static is present.")]
         public int sector = 0;
+
+        [Tooltip("Industry-standard DMX start channel (1-512 per universe). "
+               + "Ignored when a sibling DMX_Static is present.")]
+        public int dmxChannel = 1;
+
+        [Tooltip("Artnet universe (1-based). Ignored when a sibling DMX_Static is present.")]
+        public int dmxUniverse = 1;
 
         // ──────────────────────────────────────────────────────────────────────────
         // Light settings
@@ -131,13 +135,22 @@ namespace VRSL
             _absChannel = ComputeAbsoluteChannel();
         }
 
-        // Matches RawDMXConversion() / SectorConversion() in VRStageLighting_DMX_Static
+        // Matches RawDMXConversion() / SectorConversion() in VRStageLighting_DMX_Static.
+        // If a sibling DMX_Static is present on this GameObject, its addressing is the
+        // authoritative source — scene instances typically override sector/universe only
+        // on the Static component, so inheriting here keeps both paths in lockstep
+        // without requiring duplicate overrides.
         public int ComputeAbsoluteChannel()
         {
-            if (useLegacySectorMode)
-                return Mathf.Abs(sector * 13 + 1);
+            var sibling = GetComponent<VRStageLighting_DMX_Static>();
+            bool legacy  = sibling != null ? sibling.useLegacySectorMode : useLegacySectorMode;
+            int  sec     = sibling != null ? sibling.sector              : sector;
+            int  ch      = sibling != null ? sibling.dmxChannel          : dmxChannel;
+            int  uni     = sibling != null ? sibling.dmxUniverse         : dmxUniverse;
 
-            return Mathf.Abs(dmxChannel + (dmxUniverse - 1) * 512 + (dmxUniverse - 1) * 8);
+            if (legacy)
+                return Mathf.Abs(sec * 13 + 1);
+            return Mathf.Abs(ch + (uni - 1) * 512 + (uni - 1) * 8);
         }
     }
 }
