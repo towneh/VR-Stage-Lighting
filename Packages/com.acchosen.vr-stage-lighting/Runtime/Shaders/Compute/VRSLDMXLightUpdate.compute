@@ -150,7 +150,8 @@ void UpdateLights(uint3 id : SV_DispatchThreadID)
     // Mirrors getDMXGoboSelection() in VRSL-DMXFunctions: round(raw*255/30), clamp 1..N
     float spinRaw   = GetDMXValue(absChannel + 10, _DMXMainTex);
     float goboRaw   = GetDMXValue(absChannel + 11, _DMXMainTex);
-    float spinSpeed = spinRaw * 10.0;
+    // Bipolar: DMX 128 = no spin, 0 = max anti-clockwise (-10), 255 = max clockwise (+10)
+    float spinSpeed = (spinRaw - 0.5) * 20.0;
     int cookieIdx = -1;
     if (_VRSLGoboCount > 0)
     {

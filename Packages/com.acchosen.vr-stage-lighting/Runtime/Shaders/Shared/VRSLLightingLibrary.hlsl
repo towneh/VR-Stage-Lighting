@@ -11,8 +11,8 @@ struct VRSLFixtureConfig
     float4 positionAndRange;    // xyz = world position,  w = attenuation range
     float4 forwardAndType;      // xyz = base forward dir, w = light type (0=spot, 1=point)
     float4 upAndMaxIntensity;   // xyz = pan axis (world up by default), w = max intensity scalar
-    float4 spotAngles;          // x = inner half-angle (deg), y = outer half-angle (deg),
-                                // z = finalIntensity cap, w = unused
+    float4 spotAngles;          // x = inner half-angle (deg), y = max outer half-angle (deg),
+                                // z = finalIntensity cap,    w = min outer half-angle (deg)
     float4 dmxChannel;          // x = absolute DMX channel, y = enableStrobe,
                                 // z = enablePanTilt, w = enableFineChannels
     float4 panSettings;         // x = maxMinPan (deg), y = panOffset (deg),
@@ -30,7 +30,7 @@ struct VRSLLightData
     float4 spotCosines;         // x = cos(inner half-angle), y = cos(outer half-angle),
                                 // z = active flag (0 = skip this light), w = unused
     float4 cookieAndSpin;       // x = cookie array index (-1 = no cookie, 0+ = slice),
-                                // y = gobo spin speed (matches volumetric _SpinSpeed range 0–10),
+                                // y = gobo spin speed (bipolar: 0 = no spin, negative = CCW, positive = CW, ±10 max),
                                 // zw = unused
 };
 
