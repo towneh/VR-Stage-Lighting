@@ -435,12 +435,12 @@ never pull in VRChat-SDK-named helpers.
 
 The GPU scripts live in `Runtime/Scripts/GPU/` under `VRSL.GPU.asmdef`, separate from `VRSL.Core`. This separation exists because `VRSL.Core` is used by VRChat projects that have the VRChat SDK but not URP. Adding `Unity.RenderPipelines.Universal.Runtime` to `VRSL.Core`'s references would break every VRChat build.
 
-`VRSL.GPU.asmdef` uses `versionDefines` to emit the `VRSL_URP` scripting define when `com.unity.render-pipelines.universal >= 14.0` is installed, and `defineConstraints` to skip compilation of the entire assembly when URP is absent:
+`VRSL.GPU.asmdef` uses `versionDefines` to emit the `VRSL_URP` scripting define when `com.unity.render-pipelines.universal >= 17.0` is installed, and `defineConstraints` to skip compilation of the entire assembly when URP is absent:
 
 ```json
 "versionDefines": [{
     "name": "com.unity.render-pipelines.universal",
-    "expression": "14.0",
+    "expression": "17.0",
     "define": "VRSL_URP"
 }],
 "defineConstraints": ["VRSL_URP"]
