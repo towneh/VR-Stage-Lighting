@@ -514,7 +514,6 @@ MonoBehaviour:
   - {fileID: 3992678554846720072}
   - {fileID: 4315995195180916259}
   - {fileID: 5180710238704766867}
-  - {fileID: 0}
   coneWidth: 2.25
   coneLength: 8.35
   maxConeLength: 1

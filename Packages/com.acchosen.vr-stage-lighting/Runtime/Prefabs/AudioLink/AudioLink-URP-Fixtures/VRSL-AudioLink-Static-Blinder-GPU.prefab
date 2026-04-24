@@ -160,7 +160,6 @@ MonoBehaviour:
   selectGOBO: 1
   objRenderers:
   - {fileID: 7947112119382405}
-  - {fileID: 0}
   - {fileID: 7140359721764081586}
   coneWidth: 2.5
   coneLength: 8.5
@@ -189,8 +188,8 @@ MonoBehaviour:
   spotAngle: 60
   range: 20
   isPointLight: 0
-  cookieTexture: {fileID: 0}
-  cookieSpinSpeed: 0
+  goboIndex: -1
+  goboSpinSpeed: 0
   finalIntensity: 1
   enablePanTilt: 0
   panTransform: {fileID: 0}

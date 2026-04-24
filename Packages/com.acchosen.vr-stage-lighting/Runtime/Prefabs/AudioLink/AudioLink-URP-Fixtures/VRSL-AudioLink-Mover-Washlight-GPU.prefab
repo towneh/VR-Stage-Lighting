@@ -514,7 +514,6 @@ MonoBehaviour:
   - {fileID: 3380086788645938475}
   - {fileID: 1719549566932065213}
   - {fileID: 6512499448169969690}
-  - {fileID: 0}
   coneWidth: 2.7
   coneLength: 6.71
   maxConeLength: 1
@@ -542,8 +541,8 @@ MonoBehaviour:
   spotAngle: 60
   range: 20
   isPointLight: 0
-  cookieTexture: {fileID: 0}
-  cookieSpinSpeed: 0
+  goboIndex: -1
+  goboSpinSpeed: 0
   finalIntensity: 1
   enablePanTilt: 1
   panTransform: {fileID: 7042515004215238741}
