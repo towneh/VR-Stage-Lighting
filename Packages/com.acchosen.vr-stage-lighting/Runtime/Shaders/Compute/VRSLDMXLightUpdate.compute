@@ -149,8 +149,16 @@ void UpdateLights(uint3 id : SV_DispatchThreadID)
     bool  enableGobo     = cfg.tiltSettings.w > 0.5;
     float spinRaw   = GetDMXValue(absChannel + 10, _DMXMainTex);
     float goboRaw   = enableGobo ? GetDMXValue(absChannel + 11, _DMXMainTex) : 0.0;
-    // Bipolar: DMX 128 = no spin, 0 = max anti-clockwise (-10), 255 = max clockwise (+10)
-    float spinSpeed = enableGoboSpin ? (spinRaw - 0.5) * 20.0 : 0.0;
+    // Matches DMXRTShader-SpinnerTimer.shader + getGoboSpinSpeed(): DMX 0 = stopped,
+    // 1–127 = forward with rate=raw, 128–255 = reverse with rate=(raw-0.5). The 0.4
+    // factor converts the volumetric integrated angle (degrees(4·T·rate)) into the
+    // deferred pass's radians(_Time.w·10·spinSpeed) so both paths spin at the same rate.
+    float spinSpeed = 0.0;
+    if (enableGoboSpin && spinRaw >= 0.01)
+    {
+        float signedRate = spinRaw > 0.5 ? -(spinRaw - 0.5) : spinRaw;
+        spinSpeed = 0.4 * signedRate;
+    }
     int goboIdx = -1;
     if (_VRSLGoboCount > 0)
     {
