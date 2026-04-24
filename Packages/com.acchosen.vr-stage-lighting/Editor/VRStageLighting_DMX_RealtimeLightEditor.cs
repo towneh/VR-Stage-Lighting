@@ -90,22 +90,47 @@ namespace VRSL
         {
             serializedObject.Update();
 
-            bool inheritsAddressing =
-                ((VRStageLighting_DMX_RealtimeLight)target)
-                    .GetComponent<VRStageLighting_DMX_Static>() != null;
+            var rt = (VRStageLighting_DMX_RealtimeLight)target;
+            var sibling = rt.GetComponent<VRStageLighting_DMX_Static>();
 
             // ── DMX Settings ──────────────────────────────────────────────────
             GUILayout.Label("DMX Settings", _sectionLabel);
             EditorGUILayout.PropertyField(_enableDMXChannels);
             EditorGUILayout.PropertyField(_enableFineChannels);
 
-            if (inheritsAddressing)
+            if (sibling != null)
             {
                 EditorGUILayout.HelpBox(
-                    "DMX addressing inherited from the sibling "
-                    + "VRStageLighting_DMX_Static component. Edit addressing there "
-                    + "(the Static component) to keep both paths in sync.",
+                    "DMX addressing (legacy sector mode, sector, channel, and universe) "
+                    + "is inherited from the sibling VRStageLighting_DMX_Static component. "
+                    + "Edit addressing there to keep both paths in sync.",
                     MessageType.Info);
+
+                // Show what's being inherited, read-only, so the effective addressing
+                // is visible at a glance without opening the sibling component.
+                var siblingSO = new SerializedObject(sibling);
+                siblingSO.Update();
+                using (new EditorGUI.DisabledScope(true))
+                {
+                    EditorGUILayout.PropertyField(
+                        siblingSO.FindProperty("useLegacySectorMode"),
+                        new GUIContent("Use Legacy Sector Mode (inherited)"));
+                    if (sibling.useLegacySectorMode)
+                    {
+                        EditorGUILayout.PropertyField(
+                            siblingSO.FindProperty("sector"),
+                            new GUIContent("Sector (inherited)"));
+                    }
+                    else
+                    {
+                        EditorGUILayout.PropertyField(
+                            siblingSO.FindProperty("dmxChannel"),
+                            new GUIContent("DMX Channel (inherited)"));
+                        EditorGUILayout.PropertyField(
+                            siblingSO.FindProperty("dmxUniverse"),
+                            new GUIContent("DMX Universe (inherited)"));
+                    }
+                }
             }
             else
             {
@@ -143,12 +168,48 @@ namespace VRSL
             // ── Pan / Tilt (Moving Head) ──────────────────────────────────────
             GUILayout.Label("Pan / Tilt (Moving Head)", _sectionLabel);
             EditorGUILayout.PropertyField(_enablePanTilt);
-            EditorGUILayout.PropertyField(_maxMinPan);
-            EditorGUILayout.PropertyField(_maxMinTilt);
-            EditorGUILayout.PropertyField(_invertPan);
-            EditorGUILayout.PropertyField(_invertTilt);
-            EditorGUILayout.PropertyField(_panOffset);
-            EditorGUILayout.PropertyField(_tiltOffset);
+
+            if (sibling != null)
+            {
+                EditorGUILayout.HelpBox(
+                    "Pan/tilt range, inversion, and offset are inherited from the "
+                    + "sibling VRStageLighting_DMX_Static component. Edit those values "
+                    + "there to keep both paths in sync.",
+                    MessageType.Info);
+
+                var siblingSO = new SerializedObject(sibling);
+                siblingSO.Update();
+                using (new EditorGUI.DisabledScope(true))
+                {
+                    EditorGUILayout.PropertyField(
+                        siblingSO.FindProperty("maxMinPan"),
+                        new GUIContent("Max/Min Pan (inherited)"));
+                    EditorGUILayout.PropertyField(
+                        siblingSO.FindProperty("maxMinTilt"),
+                        new GUIContent("Max/Min Tilt (inherited)"));
+                    EditorGUILayout.PropertyField(
+                        siblingSO.FindProperty("invertPan"),
+                        new GUIContent("Invert Pan (inherited)"));
+                    EditorGUILayout.PropertyField(
+                        siblingSO.FindProperty("invertTilt"),
+                        new GUIContent("Invert Tilt (inherited)"));
+                    EditorGUILayout.PropertyField(
+                        siblingSO.FindProperty("panOffsetBlueGreen"),
+                        new GUIContent("Pan Offset (inherited)"));
+                    EditorGUILayout.PropertyField(
+                        siblingSO.FindProperty("tiltOffsetBlue"),
+                        new GUIContent("Tilt Offset (inherited)"));
+                }
+            }
+            else
+            {
+                EditorGUILayout.PropertyField(_maxMinPan);
+                EditorGUILayout.PropertyField(_maxMinTilt);
+                EditorGUILayout.PropertyField(_invertPan);
+                EditorGUILayout.PropertyField(_invertTilt);
+                EditorGUILayout.PropertyField(_panOffset);
+                EditorGUILayout.PropertyField(_tiltOffset);
+            }
 
             EditorGUILayout.Space();
             EditorGUILayout.Space();

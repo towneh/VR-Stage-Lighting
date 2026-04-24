@@ -238,10 +238,18 @@ namespace VRSL
                     f.enableStrobe       ? 1f : 0f,
                     f.enablePanTilt      ? 1f : 0f,
                     f.enableFineChannels ? 1f : 0f),
-                panSettings  = new Vector4(f.maxMinPan,  f.panOffset,  f.invertPan  ? 1f : 0f, f.enableGoboSpin ? 1f : 0f),
+                panSettings  = new Vector4(
+                    f.GetEffectiveMaxMinPan(),
+                    f.GetEffectivePanOffset(),
+                    f.GetEffectiveInvertPan()  ? 1f : 0f,
+                    f.enableGoboSpin           ? 1f : 0f),
                 // Subtract 90° from tiltOffset: baseForward for moving heads already points
                 // world -Y (via the 90° X root rotation), so the Rodrigues default is not re-applied.
-                tiltSettings = new Vector4(f.maxMinTilt, f.tiltOffset - 90f, f.invertTilt ? 1f : 0f, f.enableGobo ? 1f : 0f),
+                tiltSettings = new Vector4(
+                    f.GetEffectiveMaxMinTilt(),
+                    f.GetEffectiveTiltOffset() - 90f,
+                    f.GetEffectiveInvertTilt() ? 1f : 0f,
+                    f.enableGobo               ? 1f : 0f),
             };
         }
 

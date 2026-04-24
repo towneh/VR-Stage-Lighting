@@ -92,24 +92,30 @@ namespace VRSL
         [Tooltip("Read pan and tilt channels and apply Rodrigues rotation on the GPU.")]
         public bool enablePanTilt = false;
 
-        [Tooltip("Total pan travel in degrees (±half this value from centre).")]
+        [Tooltip("Total pan travel in degrees (±half this value from centre). "
+               + "Ignored when a sibling DMX_Static is present — inherited from its maxMinPan.")]
         public float maxMinPan = 180f;
 
-        [Tooltip("Total tilt travel in degrees (±half this value from centre).")]
+        [Tooltip("Total tilt travel in degrees (±half this value from centre). "
+               + "Ignored when a sibling DMX_Static is present — inherited from its maxMinTilt.")]
         public float maxMinTilt = 180f;
 
-        [Tooltip("Invert the pan direction.")]
+        [Tooltip("Invert the pan direction. "
+               + "Ignored when a sibling DMX_Static is present — inherited from its invertPan.")]
         public bool invertPan = false;
 
-        [Tooltip("Invert the tilt direction.")]
+        [Tooltip("Invert the tilt direction. "
+               + "Ignored when a sibling DMX_Static is present — inherited from its invertTilt.")]
         public bool invertTilt = false;
 
         [Range(0f, 360f)]
-        [Tooltip("Pan position offset in degrees applied after DMX decoding.")]
+        [Tooltip("Pan position offset in degrees applied after DMX decoding. "
+               + "Ignored when a sibling DMX_Static is present — inherited from its panOffsetBlueGreen.")]
         public float panOffset = 0f;
 
         [Range(0f, 360f)]
-        [Tooltip("Tilt position offset in degrees applied after DMX decoding.")]
+        [Tooltip("Tilt position offset in degrees applied after DMX decoding. "
+               + "Ignored when a sibling DMX_Static is present — inherited from its tiltOffsetBlue.")]
         public float tiltOffset = 90f;
 
         // ──────────────────────────────────────────────────────────────────────────
@@ -151,6 +157,47 @@ namespace VRSL
             if (legacy)
                 return Mathf.Abs(sec * 13 + 1);
             return Mathf.Abs(ch + (uni - 1) * 512 + (uni - 1) * 8);
+        }
+
+        // Pan/tilt modifier accessors. Same inheritance rule as ComputeAbsoluteChannel:
+        // when a sibling DMX_Static is present, its equivalent field wins so scene
+        // overrides set on the Static component flow through to the GPU path too.
+        // Note the Static component uses different field names for the offsets
+        // (panOffsetBlueGreen / tiltOffsetBlue).
+        public float GetEffectiveMaxMinPan()
+        {
+            var s = GetComponent<VRStageLighting_DMX_Static>();
+            return s != null ? s.maxMinPan : maxMinPan;
+        }
+
+        public float GetEffectiveMaxMinTilt()
+        {
+            var s = GetComponent<VRStageLighting_DMX_Static>();
+            return s != null ? s.maxMinTilt : maxMinTilt;
+        }
+
+        public bool GetEffectiveInvertPan()
+        {
+            var s = GetComponent<VRStageLighting_DMX_Static>();
+            return s != null ? s.invertPan : invertPan;
+        }
+
+        public bool GetEffectiveInvertTilt()
+        {
+            var s = GetComponent<VRStageLighting_DMX_Static>();
+            return s != null ? s.invertTilt : invertTilt;
+        }
+
+        public float GetEffectivePanOffset()
+        {
+            var s = GetComponent<VRStageLighting_DMX_Static>();
+            return s != null ? s.panOffsetBlueGreen : panOffset;
+        }
+
+        public float GetEffectiveTiltOffset()
+        {
+            var s = GetComponent<VRStageLighting_DMX_Static>();
+            return s != null ? s.tiltOffsetBlue : tiltOffset;
         }
     }
 }
