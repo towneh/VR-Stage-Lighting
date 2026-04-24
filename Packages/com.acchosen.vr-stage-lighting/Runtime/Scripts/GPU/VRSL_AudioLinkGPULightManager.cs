@@ -199,28 +199,16 @@ namespace VRSL
             Vector3 pos     = f.GetWorldPosition();
             Vector3 forward = f.GetWorldForward();
 
-            int   lightType = 0;
-            float range     = 20f;
-            float innerHalf = 15f;
-            float outerHalf = 30f;
-
-            if (f.realtimeLight != null)
-            {
-                lightType = f.realtimeLight.type == LightType.Spot ? 0 : 1;
-                range     = f.realtimeLight.range;
-                if (f.realtimeLight.type == LightType.Spot)
-                {
-                    outerHalf = f.realtimeLight.spotAngle      * 0.5f;
-                    innerHalf = f.realtimeLight.innerSpotAngle * 0.5f;
-                }
-            }
+            int   lightType = f.isPointLight ? 1 : 0;
+            float outerHalf = f.spotAngle * 0.5f;
+            float innerHalf = outerHalf   * 0.5f;
 
             // Emission color must be in linear space to match the lighting shader's expectation
             Color linearEmission = f.emissionColor.linear;
 
             return new VRSLALFixtureConfig
             {
-                positionAndRange = new Vector4(pos.x, pos.y, pos.z, range),
+                positionAndRange = new Vector4(pos.x, pos.y, pos.z, f.range),
                 forwardAndType   = new Vector4(forward.x, forward.y, forward.z, lightType),
                 // z = AudioLink active flag: 1 = sample AudioLink amplitude, 0 = static full intensity
                 intensityParams  = new Vector4(f.maxIntensity, f.finalIntensity, f.enableAudioLink ? 1f : 0f, 0f),

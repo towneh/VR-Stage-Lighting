@@ -57,12 +57,17 @@ namespace VRSL
 
         // ── Light ─────────────────────────────────────────────────────────────
         [Header("Light Settings")]
-        [Tooltip("Unity Light for this fixture. Range and spot angles are read at config upload time. "
-               + "Leave empty to auto-detect from this GameObject.")]
-        public Light realtimeLight;
-
         [Tooltip("Peak light intensity (lux) at AudioLink full amplitude (1.0). Tune per scene scale.")]
         public float maxIntensity = 10f;
+
+        [Tooltip("Spot angle in degrees for the light cone.")]
+        public float spotAngle = 60f;
+
+        [Tooltip("Light attenuation range. Increase for larger spaces.")]
+        public float range = 20f;
+
+        [Tooltip("Emit as a point light instead of a spot.")]
+        public bool isPointLight = false;
 
         [Tooltip("Optional cookie (gobo) texture projected onto the light cone. "
                + "Sampled as a greyscale mask using the red channel. "
@@ -90,26 +95,12 @@ namespace VRSL
         public Transform tiltTransform;
 
         // ─────────────────────────────────────────────────────────────────────
-        void Awake()
-        {
-            if (realtimeLight == null)
-                realtimeLight = GetComponent<Light>();
-
-            // Disable the Unity Light so URP's own Forward+ pass does not process it
-            // as a standard additional light. All illumination is handled by the GPU
-            // pipeline's fullscreen additive pass; leaving the Light enabled causes
-            // double illumination when AudioLink is on and ambient light when it is off.
-            if (realtimeLight != null)
-                realtimeLight.enabled = false;
-        }
 
         /// <summary>World-space position to use for this light (called per-frame by the manager).</summary>
         public Vector3 GetWorldPosition()
         {
             if (enablePanTilt && panTransform != null)
                 return panTransform.position;
-            if (realtimeLight != null)
-                return realtimeLight.transform.position;
             return transform.position;
         }
 
@@ -118,8 +109,6 @@ namespace VRSL
         {
             if (enablePanTilt && tiltTransform != null)
                 return tiltTransform.forward;
-            if (realtimeLight != null)
-                return realtimeLight.transform.forward;
             return transform.forward;
         }
     }

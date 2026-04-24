@@ -14,7 +14,6 @@ namespace VRSL.EditorScripts
     ///   root → MoverLightMesh-LampFixture-Base → MoverLightMesh-LampFixture-Head
     ///
     /// For each fixture found the utility:
-    ///   • Adds a Spot Light (disabled — GPU pipeline owns scene illumination).
     ///   • Adds VRStageLighting_AudioLink_RealtimeLight.
     ///   • Sets enablePanTilt = true, panTransform = Base, tiltTransform = Head.
     ///
@@ -59,23 +58,11 @@ namespace VRSL.EditorScripts
                     continue;
                 }
 
-                // Add Unity Light (disabled — GPU pipeline handles scene illumination).
-                Light light = root.GetComponent<Light>();
-                if (light == null)
-                    light = Undo.AddComponent<Light>(root.gameObject);
-
-                Undo.RecordObject(light, "Configure VRSL Spot Light");
-                light.type        = LightType.Spot;
-                light.range       = 20f;
-                light.spotAngle   = 45f;
-                light.innerSpotAngle = 20f;
-                light.intensity   = 1f;
-                light.enabled     = false;
-
                 // Add per-fixture realtime light component.
                 var rtLight = Undo.AddComponent<VRStageLighting_AudioLink_RealtimeLight>(root.gameObject);
                 Undo.RecordObject(rtLight, "Configure VRSL AudioLink Realtime Light");
-                rtLight.realtimeLight = light;
+                rtLight.spotAngle     = 45f;
+                rtLight.range         = 20f;
                 rtLight.enablePanTilt = true;
                 rtLight.panTransform  = baseXform;
                 rtLight.tiltTransform = headXform;
