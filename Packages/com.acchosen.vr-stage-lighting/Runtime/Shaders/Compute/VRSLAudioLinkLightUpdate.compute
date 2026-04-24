@@ -107,9 +107,11 @@ void UpdateLights(uint3 id : SV_DispatchThreadID)
                                      combinedIntensity > 0.001 ? 1.0 : 0.0,
                                      0.0);
     // Gobo spin phase (radians), integrated from the Static's spinSpeed.
-    // Matches the volumetric path's degrees(_Time.w · 10 · spinSpeed): scale factor
-    // π/18 converts that to radians. fmod to [-2π, 2π] bounds precision for long runs.
-    float spinPhase = fmod(cfg.reserved.y * _VRSLTime * 0.17453293, 6.28318530718);
+    // Scale factor π/9 (2× the projection shader's projected-gobo rate) is an
+    // empirical match to the volumetric cone's visible stripe-pattern rotation,
+    // which the GPU light's floor projection is usually compared against.
+    // fmod to [-2π, 2π] bounds precision for long-running scenes.
+    float spinPhase = fmod(cfg.reserved.y * _VRSLTime * 0.34906585, 6.28318530718);
     light.goboAndSpin       = float4(cfg.reserved.x,  // gobo slice index (-1 = none)
                                      spinPhase,       // pre-integrated rotation in radians
                                      0.0, 0.0);
