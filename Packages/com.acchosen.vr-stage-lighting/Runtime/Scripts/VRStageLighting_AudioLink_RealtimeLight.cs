@@ -75,7 +75,8 @@ namespace VRSL
         public bool isPointLight = false;
 
         [Range(1, 8)]
-        [Tooltip("Gobo selection (matches the AudioLink Static Select GOBO slider). 1 = Default (open beam), 2–8 = shaped gobos.")]
+        [Tooltip("Gobo selection (matches the AudioLink Static Select GOBO slider). 1 = Default (open beam), 2–8 = shaped gobos. "
+               + "Ignored when a sibling AudioLink_Static is present — inherited from its selectGOBO.")]
         public int goboIndex = 1;
 
         [Range(-10f, 10f)]
@@ -167,6 +168,12 @@ namespace VRSL
         {
             var s = GetComponent<VRStageLighting_AudioLink_Static>();
             return s != null ? s.SpinSpeed : goboSpinSpeed;
+        }
+
+        public int GetEffectiveGoboIndex()
+        {
+            var s = GetComponent<VRStageLighting_AudioLink_Static>();
+            return s != null ? s.SelectGOBO : goboIndex;
         }
     }
 

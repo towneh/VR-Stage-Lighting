@@ -149,12 +149,14 @@ namespace VRSL
             EditorGUILayout.PropertyField(_spotAngle);
             EditorGUILayout.PropertyField(_range);
             EditorGUILayout.PropertyField(_isPointLight);
-            EditorGUILayout.PropertyField(_goboIndex);
 
             if (sibling != null)
             {
                 using (new EditorGUI.DisabledScope(true))
                 {
+                    EditorGUILayout.PropertyField(
+                        siblingSO.FindProperty("selectGOBO"),
+                        new GUIContent("Gobo Index (inherited)"));
                     EditorGUILayout.PropertyField(
                         siblingSO.FindProperty("spinSpeed"),
                         new GUIContent("Gobo Spin Speed (inherited)"));
@@ -165,6 +167,7 @@ namespace VRSL
             }
             else
             {
+                EditorGUILayout.PropertyField(_goboIndex);
                 EditorGUILayout.PropertyField(_goboSpinSpeed);
                 EditorGUILayout.PropertyField(_finalIntensity);
             }

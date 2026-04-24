@@ -214,7 +214,7 @@ namespace VRSL
                     (int)f.colorMode),
                 emissionColor    = new Vector4(linearEmission.r, linearEmission.g, linearEmission.b, 0f),
                 // reserved.x = gobo array index (0+ = slot); field is 1-based to match AudioLink Static
-                reserved         = new Vector4(f.goboIndex - 1f, f.GetEffectiveGoboSpinSpeed(), 0f, 0f),
+                reserved         = new Vector4(f.GetEffectiveGoboIndex() - 1f, f.GetEffectiveGoboSpinSpeed(), 0f, 0f),
             };
         }
 
