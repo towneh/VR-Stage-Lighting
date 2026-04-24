@@ -63,10 +63,13 @@ Shader "Hidden/VRSL/DeferredLighting"
                 float u = dot(toPixel, right) / (depth * tanHalf) * 0.5 + 0.5;
                 float v = dot(toPixel, up)    / (depth * tanHalf) * 0.5 + 0.5;
 
-                // Spin: rotate UV around the centre, matching volumetric _SpinSpeed formula
+                // Spin: rotate UV around the centre, matching volumetric _SpinSpeed formula.
+                // Wrap to [0,360) degrees before trig to avoid precision jitter once
+                // _Time.w grows large in long-running scenes.
                 if (spinSpeed != 0.0)
                 {
-                    float angle = radians(_Time.w * 10.0 * spinSpeed);
+                    float angleDeg = fmod(_Time.w * 10.0 * spinSpeed, 360.0);
+                    float angle    = radians(angleDeg);
                     float s = sin(angle), c = cos(angle);
                     float cu = u - 0.5, cv = v - 0.5;
                     u = c * cu - s * cv + 0.5;
