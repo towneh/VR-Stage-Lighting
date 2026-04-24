@@ -10,7 +10,7 @@ struct VRSLFixtureConfig
 {
     float4 positionAndRange;    // xyz = world position,  w = attenuation range
     float4 forwardAndType;      // xyz = base forward dir, w = light type (0=spot, 1=point)
-    float4 upAndMaxIntensity;   // xyz = reserved, w = max intensity scalar
+    float4 rightAndMaxIntensity;// xyz = local +X in world space (tilt rotation axis), w = max intensity scalar
     float4 spotAngles;          // x = inner half-angle (deg), y = max outer half-angle (deg),
                                 // z = finalIntensity cap,    w = min outer half-angle (deg)
     float4 dmxChannel;          // x = absolute DMX channel, y = enableStrobe,

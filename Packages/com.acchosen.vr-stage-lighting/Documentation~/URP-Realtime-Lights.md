@@ -214,7 +214,7 @@ All fields use `float4`/`Vector4` rather than `float3`/`Vector3`. HLSL `Structur
 |---|---|
 | `positionAndRange` | xyz = world position, w = attenuation range |
 | `forwardAndType` | xyz = base forward direction, w = light type (0=spot, 1=point) |
-| `upAndMaxIntensity` | xyz = reserved, w = max intensity scalar |
+| `rightAndMaxIntensity` | xyz = local +X in world space (tilt rotation axis), w = max intensity scalar |
 | `spotAngles` | x = inner half-angle (deg), y = max outer half-angle (deg), z = finalIntensity cap, w = min outer half-angle (deg) |
 | `dmxChannel` | x = absolute channel, y = enableStrobe, z = enablePanTilt, w = enableFineChannels |
 | `panSettings` | x = maxMinPan (deg), y = panOffset (deg), z = invertPan (0/1), w = enableGoboSpin (0/1) |

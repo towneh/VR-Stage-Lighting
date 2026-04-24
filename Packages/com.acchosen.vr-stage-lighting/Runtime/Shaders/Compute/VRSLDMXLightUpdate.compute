@@ -84,7 +84,7 @@ void UpdateLights(uint3 id : SV_DispatchThreadID)
         strobe = GetDMXValue(absChannel + 6, _DMXStrobeTex);
 
     float combinedIntensity =
-        intensity * cfg.spotAngles.z * cfg.upAndMaxIntensity.w * strobe;
+        intensity * cfg.spotAngles.z * cfg.rightAndMaxIntensity.w * strobe;
 
     // ── Direction (pan/tilt for moving heads) ─────────────────────────────────
     float3 baseForward = cfg.forwardAndType.xyz;
@@ -115,13 +115,13 @@ void UpdateLights(uint3 id : SV_DispatchThreadID)
         float tiltDeg = (maxMinTilt * tiltRaw) - (maxMinTilt / 2.0) + tiltOffset;
         if (invertTilt) tiltDeg = -tiltDeg;
 
-        // Matches the volumetric shader: tilt around world X (object X, preserved
-        // under the 90° X root rotation) first, then pan around baseForward (object Z
-        // = world -Y for a hanging fixture). The old approach (pan around world +Y
-        // first) failed because baseForward is anti-parallel to world +Y, making the
-        // Rodrigues rotation a no-op for pan.
-        float3 homeRight     = float3(1.0, 0.0, 0.0);
-        float3 tiltedForward = RotateAroundAxis(baseForward,   homeRight,   tiltDeg);
+        // Matches the volumetric shader: tilt around the fixture's local +X in world
+        // space first, then pan around baseForward (object Z). Both axes are supplied
+        // from CPU because this kernel has no ObjectToWorld matrix — hardcoding world
+        // +X only works for fixtures whose local X already aligns with world X, which
+        // is why yawed fixtures (e.g. 180° around (0,-1,1)) previously mis-rotated.
+        float3 baseRight     = cfg.rightAndMaxIntensity.xyz;
+        float3 tiltedForward = RotateAroundAxis(baseForward,   baseRight,   tiltDeg);
         finalDir             = RotateAroundAxis(tiltedForward, baseForward, panDeg);
     }
 

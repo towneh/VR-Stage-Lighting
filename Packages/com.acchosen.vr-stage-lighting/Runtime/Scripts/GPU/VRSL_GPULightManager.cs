@@ -61,7 +61,7 @@ namespace VRSL
         {
             public Vector4 positionAndRange;    // xyz=pos,     w=range
             public Vector4 forwardAndType;      // xyz=forward, w=lightType(0=spot,1=point)
-            public Vector4 upAndMaxIntensity;   // xyz=reserved, w=maxIntensity
+            public Vector4 rightAndMaxIntensity;// xyz=local +X in world space (tilt axis), w=maxIntensity
             public Vector4 spotAngles;          // x=innerHalf(deg), y=maxOuterHalf(deg),
                                                //   z=finalIntensity, w=minOuterHalf(deg)
             public Vector4 dmxChannel;          // x=absChannel, y=enableStrobe,
@@ -208,6 +208,10 @@ namespace VRSL
                                       ? f.localLightDirection.normalized
                                       : Vector3.forward;
             Vector3 baseForward = f.transform.TransformDirection(localDir);
+            // Local +X in world space — used by the compute shader as the tilt rotation axis.
+            // The volumetric mover shader rotates object-space X by the tilt matrix; we need the
+            // same axis in world space since the compute shader has no ObjectToWorld matrix.
+            Vector3 baseRight   = f.transform.right;
 
             int   lightType    = f.isPointLight ? 1 : 0;
             float minOuterHalf = f.minSpotAngle * 0.5f;
@@ -216,9 +220,9 @@ namespace VRSL
 
             return new VRSLFixtureConfig
             {
-                positionAndRange  = new Vector4(pos.x, pos.y, pos.z, f.range),
-                forwardAndType    = new Vector4(baseForward.x, baseForward.y, baseForward.z, lightType),
-                upAndMaxIntensity = new Vector4(0f, 0f, 0f, f.maxIntensity),
+                positionAndRange     = new Vector4(pos.x, pos.y, pos.z, f.range),
+                forwardAndType       = new Vector4(baseForward.x, baseForward.y, baseForward.z, lightType),
+                rightAndMaxIntensity = new Vector4(baseRight.x, baseRight.y, baseRight.z, f.maxIntensity),
                 // spotAngles.y = max outer half-angle, spotAngles.w = min outer half-angle.
                 // The compute shader lerps between w and y based on DMX ch+4.
                 spotAngles        = new Vector4(innerHalf, outerHalf, f.finalIntensity, minOuterHalf),
