@@ -24,7 +24,12 @@ The DMX GPU realtime light path (see `URP-Realtime-Lights.md`) solved the proble
 
 AudioLink fixtures are the other major fixture family in VRSL. They share prefab structure and shader conventions with the DMX family but are driven by an entirely different data source: the AudioLink `_AudioTexture` global RenderTexture, which encodes real-time audio frequency analysis, beat detection, theme colors, and color chord data. AudioLink fixtures are self-contained — they require no external DMX controller, no GridReader, and no CRT chain — making them the default choice for scenes where stage lighting should react to music rather than external control.
 
-Before this extension, AudioLink fixtures illuminated nothing. A wash light responding to bass beats would pulse its volumetric cone but the floor beneath it would not change. The goal of this work is to drive the same `VRSLDeferredLighting.shader` fullscreen additive pass used by the DMX path from AudioLink data instead, preserving the GPU-resident, zero-CPU-per-frame-per-fixture architecture.
+Like the DMX fixtures, the original AudioLink fixture is built from three meshes drawn alongside the body: a **volumetric cone** (the audio-reactive beam shaft in haze), a **projection disc** (a stylised gobo footprint quad), and the **fixture emissive** (the lit lamp body). All three react to AudioLink in real time — but none of them illuminate scene geometry. A wash light pulsing on bass beats would visibly pulse its volumetric cone but the floor beneath it would not change.
+
+The goal of this work is to drive the same `VRSLDeferredLighting.shader` fullscreen additive pass used by the DMX path from AudioLink data instead, preserving the GPU-resident, zero-CPU-per-frame-per-fixture architecture (with one small CPU bookkeeping cost per frame for animated transforms; see *Why the DMX GPU Path Cannot Be Directly Reused for AudioLink* below). The new path complements rather than replaces the existing volumetric stack:
+
+- **Volumetric cone meshes are kept** and run alongside the GPU pass — they remain the right tool for the visible audio-reactive beam-in-haze effect and the fixture's emissive lamp glow.
+- **The projection-disc mesh is superseded by the GPU pass.** The deferred shader's `SampleGobo` projects the gobo per-pixel onto every surface inside the light cone using the proper attenuation model. The projection-disc GameObject is removed from every AudioLink GPU fixture prefab.
 
 ---
 
@@ -102,9 +107,10 @@ The consequence of per-frame config uploads is a small but real CPU cost: `N × 
 - Direction is supplied CPU-side from animated transforms, uploaded to the config buffer every frame
 - Light data lives in a GPU-resident `GraphicsBuffer` — never read back to CPU
 - The existing fullscreen `VRSLDeferredLighting.shader` is reused without modification
-- The existing AudioLink volumetric shader meshes are untouched — both can run simultaneously
+- The volumetric cone meshes and emissive fixture body shaders are untouched — both run alongside the GPU pass, providing the visible beam shaft and lamp glow
+- The projection-disc mesh is replaced by the GPU pass's per-pixel gobo projection on illuminated surfaces and is dropped from the AudioLink GPU fixture prefabs
 - `VRSL.Core` remains unchanged; no URP dependency introduced into the base assembly
-- VRChat builds are unaffected (`VRSL.GPU.asmdef` only compiles when URP ≥14.0 is present)
+- VRChat builds are unaffected (`VRSL.GPU.asmdef` only compiles when URP ≥17.0 is present)
 
 ### Full Pipeline Architecture
 

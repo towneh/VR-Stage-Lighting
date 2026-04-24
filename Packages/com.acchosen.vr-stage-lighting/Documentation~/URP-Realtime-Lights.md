@@ -21,9 +21,14 @@ The GPU light pipeline relies on Unity 6's Render Graph API (`RecordRenderGraph`
 
 VRSL (VR Stage Lighting) was designed from the ground up for VRChat, where realtime Unity lights are prohibitively expensive and GPU-accelerated shader tricks are necessary to simulate stage lighting at scale. The core of the system encodes DMX512 data inside a video stream, decodes it through a chain of Custom Render Textures (CRTs) on the GPU, and drives HLSL shaders directly — colour, intensity, pan, tilt, strobe, and gobo selection are all resolved on the GPU, per-fragment, with no CPU involvement in the per-fixture calculation.
 
-This approach produces convincing volumetric beam and projection effects but does not illuminate scene geometry. Surfaces near a stage light look the same whether the light is on or off.
+The original fixture is built from three meshes drawn alongside the fixture body: a **volumetric cone** (the visible beam shaft in haze), a **projection disc** (a stylised quad that draws the gobo "puddle" onto roughly where the light would land), and the **fixture emissive** (the lit lens of the lamp body). All three react to DMX in real time, but none of them illuminate scene geometry. Surfaces near a stage light look the same whether the light is on or off; the projection disc draws an approximation of the gobo footprint but doesn't actually contribute to the URP lighting model.
 
-Unity 6's URP introduced the **Forward+** rendering path, which moves per-tile light assignment to a GPU compute pass and removes the traditional per-object light limit — hundreds of per-pixel lights with negligible CPU overhead. This makes it practical to replace VRSL's volumetric simulation with genuine scene-illuminating lights driven by the same DMX infrastructure, and, critically, to do so without ever involving the CPU in the per-frame lighting calculation.
+Unity 6's URP introduced the **Forward+** rendering path, which moves per-tile light assignment to a GPU compute pass and removes the traditional per-object light limit — hundreds of per-pixel lights with negligible CPU overhead. This makes it practical to add a fully GPU-resident realtime light path that drives genuine scene illumination from the same DMX infrastructure, without ever involving the CPU in the per-frame lighting calculation.
+
+The new path is designed to **complement** the existing volumetric stack rather than replace it wholesale:
+
+- **Volumetric cone meshes are kept** and run alongside the GPU pass — they remain the right tool for the visible beam-in-haze effect and for the fixture's emissive body glow that helps locate the lamp in the scene.
+- **The projection-disc mesh is superseded by the GPU pass.** The deferred lighting shader's `SampleGobo` projects the gobo per-pixel onto every illuminated surface using the proper light cone, not a stylised quad. The projection-disc GameObject is removed from every GPU fixture prefab.
 
 ---
 
@@ -153,7 +158,8 @@ The GPU-driven pipeline described below addresses the illumination problem compl
 - All per-frame DMX decoding runs in a compute shader, directly sampling the existing CRT output textures
 - Light data lives in a GPU-resident `GraphicsBuffer` never read back to CPU
 - Scene geometry is illuminated by a fullscreen additive pass that reads the GPU light buffer in HLSL
-- The existing CRT shader chain and volumetric fixture shaders are untouched — they continue to run alongside the new path
+- The existing CRT shader chain and the volumetric cone meshes are untouched — they continue to run alongside the new path, providing the visible light shaft and the fixture's emissive body glow
+- The projection-disc mesh is replaced by the GPU pass's per-pixel gobo projection on illuminated surfaces and is dropped from the GPU fixture prefabs
 - The VRSL.Core assembly remains unchanged and VRChat builds are unaffected
 
 ### How the Original DMX Sampling Was Ported to Compute
