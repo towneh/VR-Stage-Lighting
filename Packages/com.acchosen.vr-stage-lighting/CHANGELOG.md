@@ -27,21 +27,9 @@
 - When a sibling Static is attached, the inherited fields render as read-only "(inherited)" widgets so the effective addressing and movement values are visible at a glance.
 - Shared `VRSL_EditorHeader` helper now draws the VRSL logo and version bar at the top of both the Static and realtime light inspectors — one source of truth for the header look.
 
-### Correctness & Behaviour Fixes
-
-- **`enableConeWidth` toggle** on the DMX realtime light — disable on fixtures without a zoom motor (par cans, blinders) to lock the cone at `maxSpotAngle`. Prevents spurious cone modulation from DMX ch+4 traffic on non-mover fixtures. Disabled by default on all static-fixture prefabs.
-- **DMX gobo spin** now reads pre-integrated phase from the SpinnerTimer CRT that drives the volumetric shader. Changing the DMX spin rate mid-show no longer causes the gobo position to jump.
-- **AudioLink gobo spin** is integrated on the GPU each frame and direction-flipped to match the volumetric cone's visible stripe rotation — GPU and volumetric now spin the same way at the same rate.
-- **Tilt rotation axis fix** — the compute shader now reads the fixture's local +X axis from the fixture config rather than assuming world +X. Movers with non-trivial root rotations (sectors rotated 180° around the (0,-1,1) axis) now track the volumetric cone correctly.
-- **Vertical and Legacy moving-head prefabs** corrected to `maxMinTilt: -180` to match Horizontal behaviour.
-- **Wash fixture cone widening** — AudioLink and DMX wash mover prefabs bumped to `minSpotAngle: 10` / `maxSpotAngle: 100` so the projected cone visually matches the volumetric's 2× wash scaling.
-- **Blinder prefabs** now set `localLightDirection` to local −Y so the GPU spot tracks the fixture's downward-facing lens mesh instead of its forward axis.
-- **AudioLink fixture prefabs** no longer ship with trailing empty `objRenderers` slots that caused `UnassignedReferenceException` on entering play mode.
-
 ### Other Changes
 
 - Post-processing example assets split into separate URP and PPv2 variants.
-- Stale `Pan`/`Tilt`/`Light` child GameObjects and legacy script fields removed from the mover spotlight and washlight prefabs that predated the GPU path dropping its dependency on Unity's `Light` component.
 - Added comprehensive implementation guides under `Documentation~/`: `URP-Realtime-Lights.md` and `AudioLink-GPU-Realtime-Lights.md` covering requirements, pipeline architecture, performance model, setup, and known limitations for each path.
 
 ## 2.8.0 Change Log - May 21, 2024
