@@ -297,3 +297,4 @@ MonoBehaviour:
   invertTilt: 0
   panOffset: 0
   tiltOffset: 90
+  localLightDirection: {x: 0, y: -1, z: 0}
