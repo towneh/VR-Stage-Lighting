@@ -235,9 +235,9 @@ namespace VRSL
                 spotAngles        = new Vector4(innerHalf, outerHalf, f.finalIntensity, minOuterHalf),
                 dmxChannel        = new Vector4(
                     f.ComputeAbsoluteChannel(),
-                    f.enableStrobe       ? 1f : 0f,
-                    f.enablePanTilt      ? 1f : 0f,
-                    f.enableFineChannels ? 1f : 0f),
+                    f.enableStrobe                     ? 1f : 0f,
+                    f.enablePanTilt                    ? 1f : 0f,
+                    f.GetEffectiveEnableFineChannels() ? 1f : 0f),
                 panSettings  = new Vector4(
                     f.GetEffectiveMaxMinPan(),
                     f.GetEffectivePanOffset(),

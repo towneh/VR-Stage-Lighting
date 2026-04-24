@@ -18,26 +18,28 @@ namespace VRSL
         SerializedProperty _dmxChannel;
         SerializedProperty _dmxUniverse;
 
-        // Light Settings
+        // General Settings
         SerializedProperty _maxIntensity;
         SerializedProperty _finalIntensity;
-        SerializedProperty _enableStrobe;
+        SerializedProperty _isPointLight;
         SerializedProperty _enableConeWidth;
         SerializedProperty _minSpotAngle;
         SerializedProperty _maxSpotAngle;
         SerializedProperty _range;
-        SerializedProperty _isPointLight;
-        SerializedProperty _enableGobo;
-        SerializedProperty _enableGoboSpin;
 
-        // Pan / Tilt
+        // Movement Settings
         SerializedProperty _enablePanTilt;
-        SerializedProperty _maxMinPan;
-        SerializedProperty _maxMinTilt;
         SerializedProperty _invertPan;
         SerializedProperty _invertTilt;
+        SerializedProperty _maxMinPan;
+        SerializedProperty _maxMinTilt;
         SerializedProperty _panOffset;
         SerializedProperty _tiltOffset;
+
+        // Fixture Settings
+        SerializedProperty _enableStrobe;
+        SerializedProperty _enableGobo;
+        SerializedProperty _enableGoboSpin;
 
         // Light Output Axis
         SerializedProperty _localLightDirection;
@@ -66,22 +68,23 @@ namespace VRSL
 
             _maxIntensity        = serializedObject.FindProperty("maxIntensity");
             _finalIntensity      = serializedObject.FindProperty("finalIntensity");
-            _enableStrobe        = serializedObject.FindProperty("enableStrobe");
+            _isPointLight        = serializedObject.FindProperty("isPointLight");
             _enableConeWidth     = serializedObject.FindProperty("enableConeWidth");
             _minSpotAngle        = serializedObject.FindProperty("minSpotAngle");
             _maxSpotAngle        = serializedObject.FindProperty("maxSpotAngle");
             _range               = serializedObject.FindProperty("range");
-            _isPointLight        = serializedObject.FindProperty("isPointLight");
-            _enableGobo          = serializedObject.FindProperty("enableGobo");
-            _enableGoboSpin      = serializedObject.FindProperty("enableGoboSpin");
 
             _enablePanTilt       = serializedObject.FindProperty("enablePanTilt");
-            _maxMinPan           = serializedObject.FindProperty("maxMinPan");
-            _maxMinTilt          = serializedObject.FindProperty("maxMinTilt");
             _invertPan           = serializedObject.FindProperty("invertPan");
             _invertTilt          = serializedObject.FindProperty("invertTilt");
+            _maxMinPan           = serializedObject.FindProperty("maxMinPan");
+            _maxMinTilt          = serializedObject.FindProperty("maxMinTilt");
             _panOffset           = serializedObject.FindProperty("panOffset");
             _tiltOffset          = serializedObject.FindProperty("tiltOffset");
+
+            _enableStrobe        = serializedObject.FindProperty("enableStrobe");
+            _enableGobo          = serializedObject.FindProperty("enableGobo");
+            _enableGoboSpin      = serializedObject.FindProperty("enableGoboSpin");
 
             _localLightDirection = serializedObject.FindProperty("localLightDirection");
         }
@@ -90,26 +93,33 @@ namespace VRSL
         {
             serializedObject.Update();
 
+            VRSL_EditorHeader.Draw();
+
             var rt = (VRStageLighting_DMX_RealtimeLight)target;
             var sibling = rt.GetComponent<VRStageLighting_DMX_Static>();
+            SerializedObject siblingSO = sibling != null ? new SerializedObject(sibling) : null;
+            if (siblingSO != null) siblingSO.Update();
 
             // ── DMX Settings ──────────────────────────────────────────────────
             GUILayout.Label("DMX Settings", _sectionLabel);
             EditorGUILayout.PropertyField(_enableDMXChannels);
-            EditorGUILayout.PropertyField(_enableFineChannels);
 
             if (sibling != null)
             {
+                using (new EditorGUI.DisabledScope(true))
+                {
+                    EditorGUILayout.PropertyField(
+                        siblingSO.FindProperty("enableFineChannels"),
+                        new GUIContent("Enable Fine Channels (inherited)"));
+                }
+
                 EditorGUILayout.HelpBox(
                     "DMX addressing (legacy sector mode, sector, channel, and universe) "
-                    + "is inherited from the sibling VRStageLighting_DMX_Static component. "
-                    + "Edit addressing there to keep both paths in sync.",
+                    + "and fine-channel mode are inherited from the sibling "
+                    + "VRStageLighting_DMX_Static component. Edit those values there "
+                    + "to keep both paths in sync.",
                     MessageType.Info);
 
-                // Show what's being inherited, read-only, so the effective addressing
-                // is visible at a glance without opening the sibling component.
-                var siblingSO = new SerializedObject(sibling);
-                siblingSO.Update();
                 using (new EditorGUI.DisabledScope(true))
                 {
                     EditorGUILayout.PropertyField(
@@ -134,6 +144,7 @@ namespace VRSL
             }
             else
             {
+                EditorGUILayout.PropertyField(_enableFineChannels);
                 EditorGUILayout.PropertyField(_useLegacySectorMode);
                 if (_useLegacySectorMode.boolValue)
                 {
@@ -149,67 +160,67 @@ namespace VRSL
             EditorGUILayout.Space();
             EditorGUILayout.Space();
 
-            // ── Light Settings ────────────────────────────────────────────────
-            GUILayout.Label("Light Settings", _sectionLabel);
+            // ── General Settings ──────────────────────────────────────────────
+            GUILayout.Label("General Settings", _sectionLabel);
             EditorGUILayout.PropertyField(_maxIntensity);
             EditorGUILayout.PropertyField(_finalIntensity);
-            EditorGUILayout.PropertyField(_enableStrobe);
+            EditorGUILayout.PropertyField(_isPointLight);
             EditorGUILayout.PropertyField(_enableConeWidth);
             EditorGUILayout.PropertyField(_minSpotAngle);
             EditorGUILayout.PropertyField(_maxSpotAngle);
             EditorGUILayout.PropertyField(_range);
-            EditorGUILayout.PropertyField(_isPointLight);
-            EditorGUILayout.PropertyField(_enableGobo);
-            EditorGUILayout.PropertyField(_enableGoboSpin);
 
             EditorGUILayout.Space();
             EditorGUILayout.Space();
 
-            // ── Pan / Tilt (Moving Head) ──────────────────────────────────────
-            GUILayout.Label("Pan / Tilt (Moving Head)", _sectionLabel);
+            // ── Movement Settings ─────────────────────────────────────────────
+            GUILayout.Label("Movement Settings", _sectionLabel);
             EditorGUILayout.PropertyField(_enablePanTilt);
 
             if (sibling != null)
             {
                 EditorGUILayout.HelpBox(
-                    "Pan/tilt range, inversion, and offset are inherited from the "
+                    "Pan/tilt inversion, range, and offset are inherited from the "
                     + "sibling VRStageLighting_DMX_Static component. Edit those values "
                     + "there to keep both paths in sync.",
                     MessageType.Info);
 
-                var siblingSO = new SerializedObject(sibling);
-                siblingSO.Update();
+                // Render the inherited values as raw disabled widgets rather than
+                // using PropertyField on the sibling's SerializedProperty — the
+                // sibling's invertPan field carries a [Header("Movement Settings")]
+                // that would duplicate our section title.
                 using (new EditorGUI.DisabledScope(true))
                 {
-                    EditorGUILayout.PropertyField(
-                        siblingSO.FindProperty("maxMinPan"),
-                        new GUIContent("Max/Min Pan (inherited)"));
-                    EditorGUILayout.PropertyField(
-                        siblingSO.FindProperty("maxMinTilt"),
-                        new GUIContent("Max/Min Tilt (inherited)"));
-                    EditorGUILayout.PropertyField(
-                        siblingSO.FindProperty("invertPan"),
-                        new GUIContent("Invert Pan (inherited)"));
-                    EditorGUILayout.PropertyField(
-                        siblingSO.FindProperty("invertTilt"),
-                        new GUIContent("Invert Tilt (inherited)"));
-                    EditorGUILayout.PropertyField(
-                        siblingSO.FindProperty("panOffsetBlueGreen"),
-                        new GUIContent("Pan Offset (inherited)"));
-                    EditorGUILayout.PropertyField(
-                        siblingSO.FindProperty("tiltOffsetBlue"),
-                        new GUIContent("Tilt Offset (inherited)"));
+                    EditorGUILayout.Toggle("Invert Pan (inherited)",      rt.GetEffectiveInvertPan());
+                    EditorGUILayout.Toggle("Invert Tilt (inherited)",     rt.GetEffectiveInvertTilt());
+                    EditorGUILayout.FloatField("Min/Max Pan Range (inherited)",  rt.GetEffectiveMaxMinPan());
+                    EditorGUILayout.FloatField("Min/Max Tilt Range (inherited)", rt.GetEffectiveMaxMinTilt());
+                    EditorGUILayout.FloatField("Pan Offset (inherited)",  rt.GetEffectivePanOffset());
+                    EditorGUILayout.FloatField("Tilt Offset (inherited)", rt.GetEffectiveTiltOffset());
                 }
             }
             else
             {
-                EditorGUILayout.PropertyField(_maxMinPan);
-                EditorGUILayout.PropertyField(_maxMinTilt);
                 EditorGUILayout.PropertyField(_invertPan);
                 EditorGUILayout.PropertyField(_invertTilt);
+                EditorGUILayout.PropertyField(
+                    _maxMinPan,
+                    new GUIContent("Min/Max Pan Range", _maxMinPan.tooltip));
+                EditorGUILayout.PropertyField(
+                    _maxMinTilt,
+                    new GUIContent("Min/Max Tilt Range", _maxMinTilt.tooltip));
                 EditorGUILayout.PropertyField(_panOffset);
                 EditorGUILayout.PropertyField(_tiltOffset);
             }
+
+            EditorGUILayout.Space();
+            EditorGUILayout.Space();
+
+            // ── Fixture Settings ──────────────────────────────────────────────
+            GUILayout.Label("Fixture Settings", _sectionLabel);
+            EditorGUILayout.PropertyField(_enableStrobe);
+            EditorGUILayout.PropertyField(_enableGobo);
+            EditorGUILayout.PropertyField(_enableGoboSpin);
 
             EditorGUILayout.Space();
             EditorGUILayout.Space();

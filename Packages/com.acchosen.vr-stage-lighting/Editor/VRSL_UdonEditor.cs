@@ -31,53 +31,15 @@ namespace VRSL.EditorScripts
     [CanEditMultipleObjects]
     public class VRSL_UdonEditor : Editor
     {
-        public static Texture logo;
-       // public static string ver = "VR Stage Lighting ver:" + " <b><color=#6a15ce> 2.4</color></b>";
-        public void OnEnable() 
-        {
-            logo = Resources.Load("VRStageLighting-Logo") as Texture;
-        }
-        public static string GetVersion()
-        {
-            string path = Application.dataPath;
-            path = path.Replace("Assets","");
-            path += "Packages"  + "\\" + "com.acchosen.vr-stage-lighting" + "\\";
-            path += "Runtime" + "\\"  + "VERSION.txt";
+        public void OnEnable() { }
 
-            StreamReader reader = new StreamReader(path); 
-            string versionNum = reader.ReadToEnd();
-            string ver = "VR Stage Lighting ver:" + " <b><color=#b33cff>" + versionNum + "</color></b>";
-            return ver;
-        }
-        public static void DrawLogo()
-        {
-            Vector2 contentOffset = new Vector2(0f, -2f);
-            GUIStyle style = new GUIStyle(EditorStyles.label);
-            style.fixedHeight = 150;
-            //style.fixedWidth = 300;
-            style.contentOffset = contentOffset;
-            style.alignment = TextAnchor.MiddleCenter;
-            var rect = GUILayoutUtility.GetRect(300f, 140f, style);
-            GUI.Box(rect, logo,style);
-        }
-        private static Rect DrawShurikenCenteredTitle(string title, Vector2 contentOffset, int HeaderHeight)
-        {
-            var style = new GUIStyle("ShurikenModuleTitle");
-            style.font = new GUIStyle(EditorStyles.boldLabel).font;
-            style.border = new RectOffset(15, 7, 4, 4);
-            style.fontSize = 14;
-            style.fixedHeight = HeaderHeight;
-            style.contentOffset = contentOffset;
-            style.alignment = TextAnchor.MiddleCenter;
-            var rect = GUILayoutUtility.GetRect(16f, HeaderHeight, style);
-
-            GUI.Box(rect, title, style);
-            return rect;
-        }
-        public static void ShurikenHeaderCentered(string title)
-        {
-            DrawShurikenCenteredTitle(title, new Vector2(0f, -2f), 22);
-        }
+        // Thin shims around VRSL_EditorHeader so the DMX/AudioLink Static editors
+        // and the GPU realtime-light editors share one source of truth for the
+        // header look. Kept public/static at the same names so existing call
+        // sites elsewhere in this file still resolve.
+        public static string GetVersion()              => VRSL_EditorHeader.GetVersionString();
+        public static void   DrawLogo()                => VRSL_EditorHeader.DrawLogo();
+        public static void   ShurikenHeaderCentered(string title) => VRSL_EditorHeader.DrawVersionBar(title);
     }
     #endif
 

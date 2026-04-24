@@ -23,11 +23,11 @@ namespace VRSL
         // ──────────────────────────────────────────────────────────────────────────
         // DMX Addressing — mirrors VRStageLighting_DMX_Static field names/defaults
         // ──────────────────────────────────────────────────────────────────────────
-        [Header("DMX Settings")]
         [Tooltip("Enables DMX control for this fixture.")]
         public bool enableDMXChannels = true;
 
-        [Tooltip("Enable 16-bit fine-channel resolution for pan and tilt.")]
+        [Tooltip("Enable 16-bit fine-channel resolution for pan and tilt. "
+               + "Ignored when a sibling DMX_Static is present — inherited from it.")]
         public bool enableFineChannels = false;
 
         [Tooltip("Use legacy sector-based addressing instead of industry-standard channels. "
@@ -49,7 +49,6 @@ namespace VRSL
         // ──────────────────────────────────────────────────────────────────────────
         // Light settings
         // ──────────────────────────────────────────────────────────────────────────
-        [Header("Light Settings")]
         [Tooltip("Light intensity emitted at DMX full-on (255). Scale to taste for your scene.")]
         public float maxIntensity = 10f;
 
@@ -88,7 +87,6 @@ namespace VRSL
         // ──────────────────────────────────────────────────────────────────────────
         // Pan / Tilt (for moving-head fixtures)
         // ──────────────────────────────────────────────────────────────────────────
-        [Header("Pan / Tilt (Moving Head)")]
         [Tooltip("Read pan and tilt channels and apply Rodrigues rotation on the GPU.")]
         public bool enablePanTilt = false;
 
@@ -121,7 +119,6 @@ namespace VRSL
         // ──────────────────────────────────────────────────────────────────────────
         // Light output axis
         // ──────────────────────────────────────────────────────────────────────────
-        [Header("Light Output Axis")]
         [Tooltip("Local-space direction the light shines from this fixture. "
                + "Defaults to forward (+Z) which matches moving-head fixtures. "
                + "Set to up (+Y) for par cans and other fixtures whose lens faces "
@@ -157,6 +154,12 @@ namespace VRSL
             if (legacy)
                 return Mathf.Abs(sec * 13 + 1);
             return Mathf.Abs(ch + (uni - 1) * 512 + (uni - 1) * 8);
+        }
+
+        public bool GetEffectiveEnableFineChannels()
+        {
+            var s = GetComponent<VRStageLighting_DMX_Static>();
+            return s != null ? s.enableFineChannels : enableFineChannels;
         }
 
         // Pan/tilt modifier accessors. Same inheritance rule as ComputeAbsoluteChannel:
