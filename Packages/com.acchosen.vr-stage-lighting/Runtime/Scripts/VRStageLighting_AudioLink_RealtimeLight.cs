@@ -69,14 +69,12 @@ namespace VRSL
         [Tooltip("Emit as a point light instead of a spot.")]
         public bool isPointLight = false;
 
-        [Tooltip("Optional cookie (gobo) texture projected onto the light cone. "
-               + "Sampled as a greyscale mask using the red channel. "
-               + "All cookie textures in the scene are packed into a shared Texture2DArray at setup time.")]
-        public Texture2D cookieTexture;
+        [Tooltip("Gobo slot index from the VRSL_AudioLinkGPULightManager's Gobo Wheel. -1 = no gobo (open beam).")]
+        public int goboIndex = -1;
 
         [Range(-10f, 10f)]
-        [Tooltip("Rotation speed for the cookie texture. Matches the Auto Spin Speed on the volumetric shader. 0 = no spin, negative = reverse direction.")]
-        public float cookieSpinSpeed = 0f;
+        [Tooltip("Gobo rotation speed. 0 = no spin, negative = anti-clockwise, positive = clockwise. Matches the volumetric shader's spin range.")]
+        public float goboSpinSpeed = 0f;
 
         [Range(0f, 1f)]
         [Tooltip("User-side intensity cap, equivalent to Final Intensity on shader fixtures.")]

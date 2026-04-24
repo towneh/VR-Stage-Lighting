@@ -156,10 +156,10 @@ namespace VRSL
             // In Unity 6 URP the prepass has no Inspector toggle — it activates when a
             // renderer feature declares this requirement before enqueueing its pass.
             _lightingPass.ConfigureInput(ScriptableRenderPassInput.Normal | ScriptableRenderPassInput.Depth);
-            // Cookie array is a plain Texture2DArray — set as a global here (CPU path)
+            // Gobo array is a plain Texture2DArray — set as a global here (CPU path)
             // rather than inside the render graph where only TextureHandle is accepted.
-            if (mgr.CookieArray != null)
-                Shader.SetGlobalTexture("_VRSLCookies", mgr.CookieArray);
+            if (mgr.GoboArray != null)
+                Shader.SetGlobalTexture("_VRSLCookies", mgr.GoboArray);
             renderer.EnqueuePass(_computePass);
             renderer.EnqueuePass(_lightingPass);
         }

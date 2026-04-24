@@ -2,7 +2,6 @@ using System.Runtime.InteropServices;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Rendering;
-using System.Linq;
 
 namespace VRSL
 {
@@ -33,16 +32,22 @@ namespace VRSL
         [Tooltip("Assign Hidden/VRSL/DeferredLighting (the VRSLDeferredLighting shader asset).")]
         public Shader lightingShader;
 
+        [Header("Gobo Wheel")]
+        [Tooltip("Gobo textures shared by all AudioLink fixtures. Packed into a Texture2DArray. "
+               + "Each fixture selects a slot via its Gobo Index field. -1 = no gobo (open beam).")]
+        public Texture2D[] goboTextures;
+
         // ── Public API for the renderer feature ───────────────────────────────
         public GraphicsBuffer FixtureConfigBuffer { get; private set; }
         public GraphicsBuffer LightDataBuffer     { get; private set; }
         public RTHandle       AudioLinkHandle     { get; private set; }
-        public Texture2DArray CookieArray         { get; private set; }
+        public Texture2DArray GoboArray           { get; private set; }
         public int  FixtureCount  { get; private set; }
+        public int  GoboCount     { get; private set; }
         public int  ComputeKernel { get; private set; }
         public Material LightingMaterial { get; private set; }
 
-        const int CookieResolution = 256;
+        const int GoboResolution = 256;
 
         // ── Structs — must match VRSLLightingLibrary.hlsl exactly ─────────────
         // VRSLALFixtureConfig: 7 × float4 = 112 bytes
@@ -67,7 +72,6 @@ namespace VRSL
         }
 
         List<VRStageLighting_AudioLink_RealtimeLight> _fixtures = new();
-        Dictionary<Texture2D, int> _cookieIndexMap = new();
         RenderTexture _cachedAudioTex;
 
         // ── Lifecycle ─────────────────────────────────────────────────────────
@@ -131,7 +135,7 @@ namespace VRSL
             if (lightingShader != null && LightingMaterial == null)
                 LightingMaterial = new Material(lightingShader) { hideFlags = HideFlags.HideAndDontSave };
 
-            BuildCookieArray();
+            BuildGoboArray();
             TryRefreshAudioLinkHandle();
         }
 
@@ -146,52 +150,35 @@ namespace VRSL
             FixtureConfigBuffer.SetData(configs);
         }
 
-        void BuildCookieArray()
+        void BuildGoboArray()
         {
-            _cookieIndexMap.Clear();
-            if (CookieArray != null) { Object.Destroy(CookieArray); CookieArray = null; }
+            if (GoboArray != null) { Object.Destroy(GoboArray); GoboArray = null; }
 
-            var unique = _fixtures
-                .Select(f => f.cookieTexture)
-                .Where(t => t != null)
-                .Distinct()
-                .ToList();
+            GoboCount = goboTextures != null ? goboTextures.Length : 0;
+            if (GoboCount == 0) return;
 
-            int slices = Mathf.Max(1, unique.Count);
-            CookieArray = new Texture2DArray(CookieResolution, CookieResolution, slices,
+            GoboArray = new Texture2DArray(GoboResolution, GoboResolution, GoboCount,
                 TextureFormat.RGBA32, false) { hideFlags = HideFlags.HideAndDontSave };
 
-            if (unique.Count == 0)
-            {
-                // Single white slice — no fixture has a cookie but shader still needs a valid binding
-                var white = new Color[CookieResolution * CookieResolution];
-                for (int i = 0; i < white.Length; i++) white[i] = Color.white;
-                CookieArray.SetPixels(white, 0);
-            }
-            else
-            {
-                var tmp = RenderTexture.GetTemporary(CookieResolution, CookieResolution, 0,
-                    RenderTextureFormat.ARGB32, RenderTextureReadWrite.Linear);
-                var readback = new Texture2D(CookieResolution, CookieResolution,
-                    TextureFormat.RGBA32, false);
-                var prevRT = RenderTexture.active;
+            var tmp      = RenderTexture.GetTemporary(GoboResolution, GoboResolution, 0,
+                               RenderTextureFormat.ARGB32, RenderTextureReadWrite.Linear);
+            var readback = new Texture2D(GoboResolution, GoboResolution, TextureFormat.RGBA32, false);
+            var prevRT   = RenderTexture.active;
 
-                for (int i = 0; i < unique.Count; i++)
-                {
-                    _cookieIndexMap[unique[i]] = i;
-                    Graphics.Blit(unique[i], tmp);
-                    RenderTexture.active = tmp;
-                    readback.ReadPixels(new Rect(0, 0, CookieResolution, CookieResolution), 0, 0);
-                    readback.Apply();
-                    CookieArray.SetPixels(readback.GetPixels(), i);
-                }
-
-                RenderTexture.active = prevRT;
-                Object.Destroy(readback);
-                RenderTexture.ReleaseTemporary(tmp);
+            for (int i = 0; i < GoboCount; i++)
+            {
+                if (goboTextures[i] == null) continue;
+                Graphics.Blit(goboTextures[i], tmp);
+                RenderTexture.active = tmp;
+                readback.ReadPixels(new Rect(0, 0, GoboResolution, GoboResolution), 0, 0);
+                readback.Apply();
+                GoboArray.SetPixels(readback.GetPixels(), i);
             }
 
-            CookieArray.Apply();
+            RenderTexture.active = prevRT;
+            Object.Destroy(readback);
+            RenderTexture.ReleaseTemporary(tmp);
+            GoboArray.Apply();
         }
 
         VRSLALFixtureConfig BuildConfig(VRStageLighting_AudioLink_RealtimeLight f)
@@ -215,12 +202,8 @@ namespace VRSL
                 spotAngles       = new Vector4(innerHalf, outerHalf, 0f, 0f),
                 alParams         = new Vector4((int)f.band, f.delay, f.bandMultiplier, (int)f.colorMode),
                 emissionColor    = new Vector4(linearEmission.r, linearEmission.g, linearEmission.b, 0f),
-                // reserved.x = cookie slice index (-1 = no cookie), reserved.y = gobo spin speed
-                reserved         = new Vector4(
-                    f.cookieTexture != null && _cookieIndexMap.TryGetValue(f.cookieTexture, out int ci)
-                        ? ci : -1f,
-                    f.cookieSpinSpeed,
-                    0f, 0f),
+                // reserved.x = gobo slot index (-1 = no gobo), reserved.y = gobo spin speed
+                reserved         = new Vector4(f.goboIndex, f.goboSpinSpeed, 0f, 0f),
             };
         }
 
@@ -246,7 +229,38 @@ namespace VRSL
         {
             FixtureConfigBuffer?.Release(); FixtureConfigBuffer = null;
             LightDataBuffer?.Release();     LightDataBuffer     = null;
-            if (CookieArray != null) { Object.Destroy(CookieArray); CookieArray = null; }
+            if (GoboArray != null) { Object.Destroy(GoboArray); GoboArray = null; }
         }
+
+#if UNITY_EDITOR
+        void Reset() => LoadDefaultGoboWheel();
+
+        [ContextMenu("Load Default Gobo Wheel")]
+        void LoadDefaultGoboWheel()
+        {
+            const string folder =
+                "Packages/com.acchosen.vr-stage-lighting/Runtime/Textures/MoverLightTextures/GOBO/IndividualGobos";
+
+            var guids = UnityEditor.AssetDatabase.FindAssets("t:Texture2D", new[] { folder });
+            var list  = new List<Texture2D>();
+            foreach (var guid in guids)
+            {
+                var tex = UnityEditor.AssetDatabase.LoadAssetAtPath<Texture2D>(
+                    UnityEditor.AssetDatabase.GUIDToAssetPath(guid));
+                if (tex != null) list.Add(tex);
+            }
+
+            list.Sort((a, b) =>
+            {
+                bool aD = a.name.Contains("Default");
+                bool bD = b.name.Contains("Default");
+                if (aD != bD) return aD ? -1 : 1;
+                return string.Compare(a.name, b.name, System.StringComparison.Ordinal);
+            });
+
+            goboTextures = list.ToArray();
+            UnityEditor.EditorUtility.SetDirty(this);
+        }
+#endif
     }
 }

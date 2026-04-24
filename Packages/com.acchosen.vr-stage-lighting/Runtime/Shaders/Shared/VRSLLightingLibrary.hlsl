@@ -94,8 +94,8 @@ struct VRSLALFixtureConfig
     float4 alParams;          // x = band (0–3), y = delay (0–127), z = bandMultiplier,
                               // w = colorMode (0=emission,1–4=theme0–3,5=colorChord)
     float4 emissionColor;     // xyz = linear RGB (used when colorMode == 0), w = unused
-    float4 reserved;          // x = cookie array index (-1 = no cookie, 0+ = slice in _VRSLCookies),
-                              // y = gobo spin speed (0 = no spin)
+    float4 reserved;          // x = gobo slot index (-1 = no gobo, 0+ = slice in _VRSLCookies),
+                              // y = gobo spin speed (bipolar: 0 = no spin, negative = CCW, positive = CW)
 };
 
 #endif // VRSL_LIGHTING_LIBRARY_INCLUDED
