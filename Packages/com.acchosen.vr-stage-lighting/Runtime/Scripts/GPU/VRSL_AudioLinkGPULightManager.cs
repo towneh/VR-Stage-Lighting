@@ -190,20 +190,31 @@ namespace VRSL
             float outerHalf = f.spotAngle * 0.5f;
             float innerHalf = outerHalf   * 0.5f;
 
-            // Emission color must be in linear space to match the lighting shader's expectation
-            Color linearEmission = f.emissionColor.linear;
+            // Emission color must be in linear space to match the lighting shader's expectation.
+            // Sibling AudioLink_Static (if present) is the authoritative source for AudioLink
+            // reaction params, final intensity, emission color, and gobo spin — see the
+            // GetEffective*() accessors on the realtime light component.
+            Color linearEmission = f.GetEffectiveEmissionColor().linear;
 
             return new VRSLALFixtureConfig
             {
                 positionAndRange = new Vector4(pos.x, pos.y, pos.z, f.range),
                 forwardAndType   = new Vector4(forward.x, forward.y, forward.z, lightType),
                 // z = AudioLink active flag: 1 = sample AudioLink amplitude, 0 = static full intensity
-                intensityParams  = new Vector4(f.maxIntensity, f.finalIntensity, f.enableAudioLink ? 1f : 0f, 0f),
+                intensityParams  = new Vector4(
+                    f.maxIntensity,
+                    f.GetEffectiveFinalIntensity(),
+                    f.GetEffectiveEnableAudioLink() ? 1f : 0f,
+                    0f),
                 spotAngles       = new Vector4(innerHalf, outerHalf, 0f, 0f),
-                alParams         = new Vector4((int)f.band, f.delay, f.bandMultiplier, (int)f.colorMode),
+                alParams         = new Vector4(
+                    (int)f.GetEffectiveBand(),
+                    f.GetEffectiveDelay(),
+                    f.GetEffectiveBandMultiplier(),
+                    (int)f.colorMode),
                 emissionColor    = new Vector4(linearEmission.r, linearEmission.g, linearEmission.b, 0f),
                 // reserved.x = gobo array index (0+ = slot); field is 1-based to match AudioLink Static
-                reserved         = new Vector4(f.goboIndex - 1f, f.goboSpinSpeed, 0f, 0f),
+                reserved         = new Vector4(f.goboIndex - 1f, f.GetEffectiveGoboSpinSpeed(), 0f, 0f),
             };
         }
 

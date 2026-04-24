@@ -29,18 +29,22 @@ namespace VRSL
     {
         // ── AudioLink ─────────────────────────────────────────────────────────
         [Header("AudioLink Settings")]
-        [Tooltip("Enable or disable AudioLink reaction for this fixture. When disabled the light contributes zero intensity to the scene.")]
+        [Tooltip("Enable or disable AudioLink reaction for this fixture. When disabled the light contributes zero intensity to the scene. "
+               + "Ignored when a sibling VRStageLighting_AudioLink_Static is present — inherited from it.")]
         public bool enableAudioLink = true;
 
-        [Tooltip("Frequency band to react to.")]
+        [Tooltip("Frequency band to react to. "
+               + "Ignored when a sibling AudioLink_Static is present — inherited from it.")]
         public AudioLinkBandState band = AudioLinkBandState.Bass;
 
         [Range(0, 127)]
-        [Tooltip("Delay offset into the AudioLink history buffer (0 = most recent).")]
+        [Tooltip("Delay offset into the AudioLink history buffer (0 = most recent). "
+               + "Ignored when a sibling AudioLink_Static is present — inherited from it.")]
         public int delay = 0;
 
         [Range(1f, 15f)]
-        [Tooltip("Multiplier applied to the raw band amplitude before driving intensity.")]
+        [Tooltip("Multiplier applied to the raw band amplitude before driving intensity. "
+               + "Ignored when a sibling AudioLink_Static is present — inherited from it.")]
         public float bandMultiplier = 1f;
 
         // ── Color ─────────────────────────────────────────────────────────────
@@ -52,7 +56,8 @@ namespace VRSL
         public ALRealtimeColorMode colorMode = ALRealtimeColorMode.Emission;
 
         [ColorUsage(false, true)]
-        [Tooltip("Fixed emission color used when Color Mode is set to Emission.")]
+        [Tooltip("Fixed emission color used when Color Mode is set to Emission. "
+               + "Ignored when a sibling AudioLink_Static is present — inherited from its lightColorTint.")]
         public Color emissionColor = Color.white;
 
         // ── Light ─────────────────────────────────────────────────────────────
@@ -74,11 +79,13 @@ namespace VRSL
         public int goboIndex = 1;
 
         [Range(-10f, 10f)]
-        [Tooltip("Gobo rotation speed. 0 = no spin, negative = anti-clockwise, positive = clockwise. Matches the volumetric shader's spin range.")]
+        [Tooltip("Gobo rotation speed. 0 = no spin, negative = anti-clockwise, positive = clockwise. Matches the volumetric shader's spin range. "
+               + "Ignored when a sibling AudioLink_Static is present — inherited from its spinSpeed.")]
         public float goboSpinSpeed = 0f;
 
         [Range(0f, 1f)]
-        [Tooltip("User-side intensity cap, equivalent to Final Intensity on shader fixtures.")]
+        [Tooltip("User-side intensity cap, equivalent to Final Intensity on shader fixtures. "
+               + "Ignored when a sibling AudioLink_Static is present — inherited from it.")]
         public float finalIntensity = 1f;
 
         // ── Pan / Tilt ────────────────────────────────────────────────────────
@@ -109,6 +116,57 @@ namespace VRSL
             if (enablePanTilt && tiltTransform != null)
                 return tiltTransform.forward;
             return transform.forward;
+        }
+
+        // ── Sibling inheritance ───────────────────────────────────────────────
+        // Same pattern as VRStageLighting_DMX_RealtimeLight: if a sibling
+        // VRStageLighting_AudioLink_Static is present, its fields win so scene
+        // authors who override band/delay/intensity/color on the Static
+        // component get the same values flowing through to the GPU path without
+        // needing duplicate overrides here. Some sibling field names differ from
+        // the GPU component's (lightColorTint → emissionColor, spinSpeed →
+        // goboSpinSpeed) — the mapping is intentional per concept.
+
+        public bool GetEffectiveEnableAudioLink()
+        {
+            var s = GetComponent<VRStageLighting_AudioLink_Static>();
+            return s != null ? s.EnableAudioLink : enableAudioLink;
+        }
+
+        public AudioLinkBandState GetEffectiveBand()
+        {
+            var s = GetComponent<VRStageLighting_AudioLink_Static>();
+            return s != null ? s.Band : band;
+        }
+
+        public int GetEffectiveDelay()
+        {
+            var s = GetComponent<VRStageLighting_AudioLink_Static>();
+            return s != null ? s.Delay : delay;
+        }
+
+        public float GetEffectiveBandMultiplier()
+        {
+            var s = GetComponent<VRStageLighting_AudioLink_Static>();
+            return s != null ? s.BandMultiplier : bandMultiplier;
+        }
+
+        public float GetEffectiveFinalIntensity()
+        {
+            var s = GetComponent<VRStageLighting_AudioLink_Static>();
+            return s != null ? s.finalIntensity : finalIntensity;
+        }
+
+        public Color GetEffectiveEmissionColor()
+        {
+            var s = GetComponent<VRStageLighting_AudioLink_Static>();
+            return s != null ? s.LightColorTint : emissionColor;
+        }
+
+        public float GetEffectiveGoboSpinSpeed()
+        {
+            var s = GetComponent<VRStageLighting_AudioLink_Static>();
+            return s != null ? s.SpinSpeed : goboSpinSpeed;
         }
     }
 
