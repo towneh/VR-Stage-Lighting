@@ -200,7 +200,7 @@ float3 RotateAroundAxis(float3 v, float3 axis, float angleDeg)
 }
 ```
 
-Pan is applied first, rotating the base forward direction around the fixture's world-up axis (stored in `VRSLFixtureConfig.upAndMaxIntensity.xyz`). Tilt is then applied around the resulting right vector. This matches the mechanical articulation of a real moving head fixture and the two-transform hierarchy VRSL uses in scene.
+Tilt is applied first, rotating the base forward direction around world X (object X under the standard 90° X root rotation on every VRSL fixture). Pan then rotates around the base forward direction itself (object Z = world -Y for a hanging fixture, matching `rotateYMatrix` in `VRSL-StandardMover-Vertex.cginc`, which despite its name rotates around object Z). Doing pan around the base forward rather than world +Y is required because `baseForward` is anti-parallel to world +Y for a hanging fixture, so rotating it around world +Y is a no-op.
 
 ### GPU Data Structs
 
@@ -214,13 +214,13 @@ All fields use `float4`/`Vector4` rather than `float3`/`Vector3`. HLSL `Structur
 |---|---|
 | `positionAndRange` | xyz = world position, w = attenuation range |
 | `forwardAndType` | xyz = base forward direction, w = light type (0=spot, 1=point) |
-| `upAndMaxIntensity` | xyz = pan rotation axis (world Y by default), w = max intensity scalar |
-| `spotAngles` | x = inner half-angle (deg), y = outer half-angle (deg), z = finalIntensity cap |
+| `upAndMaxIntensity` | xyz = reserved, w = max intensity scalar |
+| `spotAngles` | x = inner half-angle (deg), y = max outer half-angle (deg), z = finalIntensity cap, w = min outer half-angle (deg) |
 | `dmxChannel` | x = absolute channel, y = enableStrobe, z = enablePanTilt, w = enableFineChannels |
-| `panSettings` | x = maxMinPan (deg), y = panOffset (deg), z = invertPan (0/1) |
-| `tiltSettings` | x = maxMinTilt (deg), y = tiltOffset (deg), z = invertTilt (0/1) |
+| `panSettings` | x = maxMinPan (deg), y = panOffset (deg), z = invertPan (0/1), w = enableGoboSpin (0/1) |
+| `tiltSettings` | x = maxMinTilt (deg), y = tiltOffset (deg), z = invertTilt (0/1), w = enableGobo (0/1) |
 
-**VRSLLightData** (64 bytes, 4 × `float4`) — written by the compute shader each frame, read by the fragment shader:
+**VRSLLightData** (80 bytes, 5 × `float4`) — written by the compute shader each frame, read by the fragment shader:
 
 | Field | Contents |
 |---|---|
@@ -228,6 +228,7 @@ All fields use `float4`/`Vector4` rather than `float3`/`Vector3`. HLSL `Structur
 | `directionAndType` | xyz = normalised direction, w = type (0=spot, 1=point) |
 | `colorAndIntensity` | xyz = linear RGB, w = combined intensity (dimmer × max × final × strobe) |
 | `spotCosines` | x = cos(innerHalfAngle), y = cos(outerHalfAngle), z = active flag (0 = skip light) |
+| `goboAndSpin` | x = gobo array index (-1 = none, 0+ = slice in `_VRSLGobos`), y = gobo spin speed (±10 bipolar) |
 
 ### Full Pipeline Architecture
 

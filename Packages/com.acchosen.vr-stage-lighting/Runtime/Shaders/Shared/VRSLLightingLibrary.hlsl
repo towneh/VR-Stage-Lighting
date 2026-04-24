@@ -10,15 +10,15 @@ struct VRSLFixtureConfig
 {
     float4 positionAndRange;    // xyz = world position,  w = attenuation range
     float4 forwardAndType;      // xyz = base forward dir, w = light type (0=spot, 1=point)
-    float4 upAndMaxIntensity;   // xyz = pan axis (world up by default), w = max intensity scalar
+    float4 upAndMaxIntensity;   // xyz = reserved, w = max intensity scalar
     float4 spotAngles;          // x = inner half-angle (deg), y = max outer half-angle (deg),
                                 // z = finalIntensity cap,    w = min outer half-angle (deg)
     float4 dmxChannel;          // x = absolute DMX channel, y = enableStrobe,
                                 // z = enablePanTilt, w = enableFineChannels
     float4 panSettings;         // x = maxMinPan (deg), y = panOffset (deg),
-                                // z = invertPan (0/1), w = unused
+                                // z = invertPan (0/1), w = enableGoboSpin (0/1)
     float4 tiltSettings;        // x = maxMinTilt (deg), y = tiltOffset (deg),
-                                // z = invertTilt (0/1), w = unused
+                                // z = invertTilt (0/1), w = enableGobo (0/1)
 };
 
 // Per-fixture light state computed by the compute shader every frame
@@ -29,7 +29,7 @@ struct VRSLLightData
     float4 colorAndIntensity;   // xyz = linear RGB, w = combined intensity
     float4 spotCosines;         // x = cos(inner half-angle), y = cos(outer half-angle),
                                 // z = active flag (0 = skip this light), w = unused
-    float4 cookieAndSpin;       // x = cookie array index (-1 = no cookie, 0+ = slice),
+    float4 goboAndSpin;         // x = gobo array index (-1 = no gobo, 0+ = slice in _VRSLGobos),
                                 // y = gobo spin speed (bipolar: 0 = no spin, negative = CCW, positive = CW, ±10 max),
                                 // zw = unused
 };
@@ -94,7 +94,7 @@ struct VRSLALFixtureConfig
     float4 alParams;          // x = band (0–3), y = delay (0–127), z = bandMultiplier,
                               // w = colorMode (0=emission,1–4=theme0–3,5=colorChord)
     float4 emissionColor;     // xyz = linear RGB (used when colorMode == 0), w = unused
-    float4 reserved;          // x = gobo slot index (-1 = no gobo, 0+ = slice in _VRSLCookies),
+    float4 reserved;          // x = gobo slot index (-1 = no gobo, 0+ = slice in _VRSLGobos),
                               // y = gobo spin speed (bipolar: 0 = no spin, negative = CCW, positive = CW)
 };
 

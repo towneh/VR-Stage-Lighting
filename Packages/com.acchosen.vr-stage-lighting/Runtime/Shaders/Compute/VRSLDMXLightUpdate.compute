@@ -151,14 +151,14 @@ void UpdateLights(uint3 id : SV_DispatchThreadID)
     float goboRaw   = enableGobo ? GetDMXValue(absChannel + 11, _DMXMainTex) : 0.0;
     // Bipolar: DMX 128 = no spin, 0 = max anti-clockwise (-10), 255 = max clockwise (+10)
     float spinSpeed = enableGoboSpin ? (spinRaw - 0.5) * 20.0 : 0.0;
-    int cookieIdx = -1;
+    int goboIdx = -1;
     if (_VRSLGoboCount > 0)
     {
         int slot = (int)round(goboRaw * 255.0 / 30.0);
-        slot      = clamp(slot, 1, (int)_VRSLGoboCount);
-        cookieIdx = slot - 1; // convert to 0-based array index
+        slot    = clamp(slot, 1, (int)_VRSLGoboCount);
+        goboIdx = slot - 1; // convert to 0-based array index
     }
 
-    light.cookieAndSpin = float4((float)cookieIdx, spinSpeed, 0, 0);
+    light.goboAndSpin = float4((float)goboIdx, spinSpeed, 0, 0);
     _LightData[idx] = light;
 }

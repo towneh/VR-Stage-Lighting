@@ -114,7 +114,7 @@ Because AudioLink has no pan/tilt channels, the fixture manager reads animated t
 
 Add `VRStageLighting_AudioLink_RealtimeLight` to your AudioLink mover fixtures, place the `VRSL-AudioLink-GPU-Manager` prefab in your scene with the compute and lighting shaders assigned, and add the `VRSLAudioLinkRealtimeLightFeature` renderer feature to your URP Renderer asset. For quick scene-wide setup, use **VRSL → Setup AudioLink GPU Realtime Lights in Scene** in the Unity menu bar.
 
-Cookie (gobo) textures, spin speed, and an `enableAudioLink` toggle (which falls back to full static intensity when disabled) are all supported.
+Gobo textures, spin speed, and an `enableAudioLink` toggle (which falls back to full static intensity when disabled) are all supported.
 
 See `Documentation~/AudioLink-GPU-Realtime-Lights.md` for the full implementation guide.
 

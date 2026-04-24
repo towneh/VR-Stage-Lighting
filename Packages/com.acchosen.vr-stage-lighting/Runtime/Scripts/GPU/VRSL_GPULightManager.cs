@@ -46,13 +46,13 @@ namespace VRSL
         public RTHandle        DMXMainHandle       { get; private set; }
         public RTHandle        DMXMovementHandle   { get; private set; }
         public RTHandle        DMXStrobeHandle     { get; private set; }
-        public Texture2DArray  CookieArray         { get; private set; }
+        public Texture2DArray  GoboArray           { get; private set; }
         public int  FixtureCount   { get; private set; }
         public int  GoboCount      { get; private set; }
         public int  ComputeKernel  { get; private set; }
         public Material LightingMaterial { get; private set; }
 
-        const int CookieResolution = 256;
+        const int GoboResolution = 256;
 
         // ── Structs — must match VRSLLightingLibrary.hlsl exactly ─────────────
         // 7 × float4 = 112 bytes
@@ -61,13 +61,13 @@ namespace VRSL
         {
             public Vector4 positionAndRange;    // xyz=pos,     w=range
             public Vector4 forwardAndType;      // xyz=forward, w=lightType(0=spot,1=point)
-            public Vector4 upAndMaxIntensity;   // xyz=panAxis, w=maxIntensity
-            public Vector4 spotAngles;          // x=innerHalf(deg), y=outerHalf(deg),
-                                               //   z=finalIntensity, w=unused
+            public Vector4 upAndMaxIntensity;   // xyz=reserved, w=maxIntensity
+            public Vector4 spotAngles;          // x=innerHalf(deg), y=maxOuterHalf(deg),
+                                               //   z=finalIntensity, w=minOuterHalf(deg)
             public Vector4 dmxChannel;          // x=absChannel, y=enableStrobe,
                                                //   z=enablePanTilt, w=enableFineChannels
-            public Vector4 panSettings;         // x=maxMinPan, y=panOffset, z=invertPan, w=unused
-            public Vector4 tiltSettings;        // x=maxMinTilt,y=tiltOffset,z=invertTilt,w=unused
+            public Vector4 panSettings;         // x=maxMinPan, y=panOffset, z=invertPan, w=enableGoboSpin
+            public Vector4 tiltSettings;        // x=maxMinTilt,y=tiltOffset,z=invertTilt,w=enableGobo
         }
 
         // 5 × float4 = 80 bytes
@@ -78,7 +78,7 @@ namespace VRSL
             public Vector4 directionAndType;
             public Vector4 colorAndIntensity;
             public Vector4 spotCosines;
-            public Vector4 cookieAndSpin;
+            public Vector4 goboAndSpin;
         }
 
         List<VRStageLighting_DMX_RealtimeLight> _fixtures = new();
@@ -208,7 +208,6 @@ namespace VRSL
                                       ? f.localLightDirection.normalized
                                       : Vector3.forward;
             Vector3 baseForward = f.transform.TransformDirection(localDir);
-            Vector3 panAxis     = Vector3.up;
 
             int   lightType    = f.isPointLight ? 1 : 0;
             float minOuterHalf = f.minSpotAngle * 0.5f;
@@ -219,7 +218,7 @@ namespace VRSL
             {
                 positionAndRange  = new Vector4(pos.x, pos.y, pos.z, f.range),
                 forwardAndType    = new Vector4(baseForward.x, baseForward.y, baseForward.z, lightType),
-                upAndMaxIntensity = new Vector4(panAxis.x, panAxis.y, panAxis.z, f.maxIntensity),
+                upAndMaxIntensity = new Vector4(0f, 0f, 0f, f.maxIntensity),
                 // spotAngles.y = max outer half-angle, spotAngles.w = min outer half-angle.
                 // The compute shader lerps between w and y based on DMX ch+4.
                 spotAngles        = new Vector4(innerHalf, outerHalf, f.finalIntensity, minOuterHalf),
@@ -252,17 +251,17 @@ namespace VRSL
 
         void BuildGoboArray()
         {
-            if (CookieArray != null) { Object.Destroy(CookieArray); CookieArray = null; }
+            if (GoboArray != null) { Object.Destroy(GoboArray); GoboArray = null; }
 
             GoboCount = goboTextures != null ? goboTextures.Length : 0;
             if (GoboCount == 0) return;
 
-            CookieArray = new Texture2DArray(CookieResolution, CookieResolution, GoboCount,
+            GoboArray = new Texture2DArray(GoboResolution, GoboResolution, GoboCount,
                 TextureFormat.RGBA32, false) { hideFlags = HideFlags.HideAndDontSave };
 
-            var tmp      = RenderTexture.GetTemporary(CookieResolution, CookieResolution, 0,
+            var tmp      = RenderTexture.GetTemporary(GoboResolution, GoboResolution, 0,
                                RenderTextureFormat.ARGB32, RenderTextureReadWrite.Linear);
-            var readback = new Texture2D(CookieResolution, CookieResolution, TextureFormat.RGBA32, false);
+            var readback = new Texture2D(GoboResolution, GoboResolution, TextureFormat.RGBA32, false);
             var prevRT   = RenderTexture.active;
 
             for (int i = 0; i < GoboCount; i++)
@@ -270,22 +269,22 @@ namespace VRSL
                 if (goboTextures[i] == null) continue;
                 Graphics.Blit(goboTextures[i], tmp);
                 RenderTexture.active = tmp;
-                readback.ReadPixels(new Rect(0, 0, CookieResolution, CookieResolution), 0, 0);
+                readback.ReadPixels(new Rect(0, 0, GoboResolution, GoboResolution), 0, 0);
                 readback.Apply();
-                CookieArray.SetPixels(readback.GetPixels(), i);
+                GoboArray.SetPixels(readback.GetPixels(), i);
             }
 
             RenderTexture.active = prevRT;
             Object.Destroy(readback);
             RenderTexture.ReleaseTemporary(tmp);
-            CookieArray.Apply();
+            GoboArray.Apply();
         }
 
         void ReleaseBuffers()
         {
             FixtureConfigBuffer?.Release(); FixtureConfigBuffer = null;
             LightDataBuffer?.Release();     LightDataBuffer     = null;
-            if (CookieArray != null) { Object.Destroy(CookieArray); CookieArray = null; }
+            if (GoboArray != null) { Object.Destroy(GoboArray); GoboArray = null; }
         }
     }
 }

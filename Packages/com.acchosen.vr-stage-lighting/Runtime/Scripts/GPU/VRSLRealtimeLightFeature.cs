@@ -177,10 +177,10 @@ namespace VRSL
             var mgr = VRSL_GPULightManager.Instance;
             if (mgr == null) return;
             _lightingPass.ConfigureInput(ScriptableRenderPassInput.Normal | ScriptableRenderPassInput.Depth);
-            // Cookie array is a plain Texture2DArray — set as a global here rather than
+            // Gobo array is a plain Texture2DArray — set as a global here rather than
             // inside the render graph where only TextureHandle is accepted.
-            if (mgr.CookieArray != null)
-                Shader.SetGlobalTexture("_VRSLCookies", mgr.CookieArray);
+            if (mgr.GoboArray != null)
+                Shader.SetGlobalTexture("_VRSLGobos", mgr.GoboArray);
             renderer.EnqueuePass(_computePass);
             renderer.EnqueuePass(_lightingPass);
         }

@@ -32,19 +32,19 @@ Shader "Hidden/VRSL/DeferredLighting"
             StructuredBuffer<VRSLLightData> _VRSLLights;
             uint _VRSLLightCount;
 
-            // Cookie (gobo) texture array — one slice per unique cookie texture.
-            // Slice index is stored in VRSLLightData.spotCosines.w (-1 = no cookie).
-            Texture2DArray _VRSLCookies;
+            // Gobo texture array — one slice per unique gobo texture.
+            // Slice index is stored in VRSLLightData.goboAndSpin.x (-1 = no gobo).
+            Texture2DArray _VRSLGobos;
             SamplerState sampler_linear_clamp;
 
-            // Project a world-space surface point onto the light's cookie texture.
-            // Returns a [0,1] greyscale mask value (1.0 when no cookie assigned).
+            // Project a world-space surface point onto the light's gobo texture.
+            // Returns a [0,1] greyscale mask value (1.0 when no gobo assigned).
             // spinSpeed matches the volumetric shader's _SpinSpeed (range 0–10);
             // uses the same formula: angle = _Time.w * 10 * spinSpeed (degrees).
-            float SampleCookie(float cookieIdx, float spinSpeed, float3 posWS,
-                               float3 lightPos, float3 lightDir, float cosOuter)
+            float SampleGobo(float goboIdx, float spinSpeed, float3 posWS,
+                             float3 lightPos, float3 lightDir, float cosOuter)
             {
-                if (cookieIdx < -0.5) return 1.0;
+                if (goboIdx < -0.5) return 1.0;
 
                 float3 toPixel = posWS - lightPos;
                 float  depth   = dot(toPixel, lightDir);
@@ -73,8 +73,8 @@ Shader "Hidden/VRSL/DeferredLighting"
                     v = s * cu + c * cv + 0.5;
                 }
 
-                return _VRSLCookies.SampleLevel(sampler_linear_clamp,
-                           float3(u, v, cookieIdx), 0).r;
+                return _VRSLGobos.SampleLevel(sampler_linear_clamp,
+                           float3(u, v, goboIdx), 0).r;
             }
 
             struct Varyings
@@ -121,12 +121,12 @@ Shader "Hidden/VRSL/DeferredLighting"
                     VRSLLightData light = _VRSLLights[li];
                     float3 contrib = VRSL_EvaluateLight(light, posWS, normalWS);
 
-                    // Apply cookie projection (cookieAndSpin.x = slice index, .y = spin speed)
-                    contrib *= SampleCookie(light.cookieAndSpin.x, light.cookieAndSpin.y,
-                                           posWS,
-                                           light.positionAndRange.xyz,
-                                           light.directionAndType.xyz,
-                                           light.spotCosines.y);
+                    // Apply gobo projection (goboAndSpin.x = slice index, .y = spin speed)
+                    contrib *= SampleGobo(light.goboAndSpin.x, light.goboAndSpin.y,
+                                          posWS,
+                                          light.positionAndRange.xyz,
+                                          light.directionAndType.xyz,
+                                          light.spotCosines.y);
 
                     lighting += contrib;
                 }

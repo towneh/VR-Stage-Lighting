@@ -159,7 +159,7 @@ namespace VRSL
             // Gobo array is a plain Texture2DArray — set as a global here (CPU path)
             // rather than inside the render graph where only TextureHandle is accepted.
             if (mgr.GoboArray != null)
-                Shader.SetGlobalTexture("_VRSLCookies", mgr.GoboArray);
+                Shader.SetGlobalTexture("_VRSLGobos", mgr.GoboArray);
             renderer.EnqueuePass(_computePass);
             renderer.EnqueuePass(_lightingPass);
         }
