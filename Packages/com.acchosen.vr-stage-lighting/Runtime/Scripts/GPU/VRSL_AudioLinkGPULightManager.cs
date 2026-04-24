@@ -202,8 +202,8 @@ namespace VRSL
                 spotAngles       = new Vector4(innerHalf, outerHalf, 0f, 0f),
                 alParams         = new Vector4((int)f.band, f.delay, f.bandMultiplier, (int)f.colorMode),
                 emissionColor    = new Vector4(linearEmission.r, linearEmission.g, linearEmission.b, 0f),
-                // reserved.x = gobo slot index (-1 = no gobo), reserved.y = gobo spin speed
-                reserved         = new Vector4(f.goboIndex, f.goboSpinSpeed, 0f, 0f),
+                // reserved.x = gobo array index (0+ = slot); field is 1-based to match AudioLink Static
+                reserved         = new Vector4(f.goboIndex - 1f, f.goboSpinSpeed, 0f, 0f),
             };
         }
 

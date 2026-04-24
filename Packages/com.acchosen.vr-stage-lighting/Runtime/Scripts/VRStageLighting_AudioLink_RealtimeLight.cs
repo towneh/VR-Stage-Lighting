@@ -69,8 +69,9 @@ namespace VRSL
         [Tooltip("Emit as a point light instead of a spot.")]
         public bool isPointLight = false;
 
-        [Tooltip("Gobo slot index from the VRSL_AudioLinkGPULightManager's Gobo Wheel. -1 = no gobo (open beam).")]
-        public int goboIndex = -1;
+        [Range(1, 8)]
+        [Tooltip("Gobo selection (matches the AudioLink Static Select GOBO slider). 1 = Default (open beam), 2–8 = shaped gobos.")]
+        public int goboIndex = 1;
 
         [Range(-10f, 10f)]
         [Tooltip("Gobo rotation speed. 0 = no spin, negative = anti-clockwise, positive = clockwise. Matches the volumetric shader's spin range.")]
