@@ -68,6 +68,9 @@ namespace VRSL
         [Tooltip("Emit as a point light instead of a spot.")]
         public bool isPointLight = false;
 
+        [Tooltip("Enable gobo selection via DMX channel +11. When disabled the gobo defaults to open beam (slot 1).")]
+        public bool enableGobo = true;
+
         [Tooltip("Allow DMX channel +10 to drive gobo spin speed. Disable to lock the gobo in place.")]
         public bool enableGoboSpin = true;
 
