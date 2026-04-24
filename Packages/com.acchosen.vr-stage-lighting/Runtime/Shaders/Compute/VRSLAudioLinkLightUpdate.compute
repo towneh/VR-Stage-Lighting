@@ -20,6 +20,11 @@ Texture2D<float4> _AudioTexture;
 StructuredBuffer<VRSLALFixtureConfig>  _ALFixtureConfigs;
 RWStructuredBuffer<VRSLLightData>      _LightData;
 uint                                    _FixtureCount;
+// Elapsed seconds since scene load — supplied from CPU each frame. Used to
+// integrate the gobo spin rate into a rotation phase, matching the volumetric
+// AudioLink shader's _Time.w · 10 · spinSpeed (degrees). fmod in the kernel
+// keeps the phase bounded to avoid float precision drift after long sessions.
+float                                   _VRSLTime;
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 // Rodrigues rotation — used if the caller ever pre-rotates direction on the GPU.
@@ -101,8 +106,12 @@ void UpdateLights(uint3 id : SV_DispatchThreadID)
     light.spotCosines       = float4(innerCos, outerCos,
                                      combinedIntensity > 0.001 ? 1.0 : 0.0,
                                      0.0);
+    // Gobo spin phase (radians), integrated from the Static's spinSpeed.
+    // Matches the volumetric path's degrees(_Time.w · 10 · spinSpeed): scale factor
+    // π/18 converts that to radians. fmod to [-2π, 2π] bounds precision for long runs.
+    float spinPhase = fmod(cfg.reserved.y * _VRSLTime * 0.17453293, 6.28318530718);
     light.goboAndSpin       = float4(cfg.reserved.x,  // gobo slice index (-1 = none)
-                                     cfg.reserved.y,  // gobo spin speed
+                                     spinPhase,       // pre-integrated rotation in radians
                                      0.0, 0.0);
     _LightData[idx] = light;
 }

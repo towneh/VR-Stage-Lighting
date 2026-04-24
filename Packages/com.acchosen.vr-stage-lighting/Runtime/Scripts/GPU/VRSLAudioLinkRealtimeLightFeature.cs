@@ -42,6 +42,7 @@ namespace VRSL
                 public ComputeShader cs;
                 public int           kernel;
                 public int           fixtureCount;
+                public float         time;
             }
 
             public override void RecordRenderGraph(RenderGraph rg, ContextContainer frame)
@@ -60,6 +61,10 @@ namespace VRSL
                 d.cs                  = mgr.computeShader;
                 d.kernel              = mgr.ComputeKernel;
                 d.fixtureCount        = mgr.FixtureCount;
+                // Captured here so the render graph lambda doesn't read Time.* off thread.
+                // timeSinceLevelLoad resets on scene reload, which is the desirable behaviour
+                // for gobo spin — phase restarts cleanly with the scene.
+                d.time                = Time.timeSinceLevelLoad;
 
                 builder.UseBuffer( d.fixtureConfigBuffer, AccessFlags.Read);
                 builder.UseBuffer( d.lightDataBuffer,     AccessFlags.Write);
@@ -69,6 +74,7 @@ namespace VRSL
                 {
                     var cmd = ctx.cmd;
                     cmd.SetComputeIntParam(    p.cs,           "_FixtureCount",       p.fixtureCount);
+                    cmd.SetComputeFloatParam(  p.cs,           "_VRSLTime",           p.time);
                     cmd.SetComputeBufferParam( p.cs, p.kernel, "_ALFixtureConfigs",   p.fixtureConfigBuffer);
                     cmd.SetComputeBufferParam( p.cs, p.kernel, "_LightData",          p.lightDataBuffer);
                     cmd.SetComputeTextureParam(p.cs, p.kernel, "_AudioTexture",       p.audioLinkTex);
