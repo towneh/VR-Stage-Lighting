@@ -224,7 +224,7 @@ namespace VRSL
                     f.enableStrobe       ? 1f : 0f,
                     f.enablePanTilt      ? 1f : 0f,
                     f.enableFineChannels ? 1f : 0f),
-                panSettings  = new Vector4(f.maxMinPan,  f.panOffset,  f.invertPan  ? 1f : 0f, 0f),
+                panSettings  = new Vector4(f.maxMinPan,  f.panOffset,  f.invertPan  ? 1f : 0f, f.enableGoboSpin ? 1f : 0f),
                 // Subtract 90° from tiltOffset: baseForward already points down (world -Y)
                 // via transform.forward, so the 90° Rodrigues default must not be re-applied.
                 tiltSettings = new Vector4(f.maxMinTilt, f.tiltOffset - 90f, f.invertTilt ? 1f : 0f, 0f),

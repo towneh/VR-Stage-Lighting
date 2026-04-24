@@ -68,6 +68,9 @@ namespace VRSL
         [Tooltip("Emit as a point light instead of a spot.")]
         public bool isPointLight = false;
 
+        [Tooltip("Allow DMX channel +10 to drive gobo spin speed. Disable to lock the gobo in place.")]
+        public bool enableGoboSpin = true;
+
         // ──────────────────────────────────────────────────────────────────────────
         // Pan / Tilt (for moving-head fixtures)
         // ──────────────────────────────────────────────────────────────────────────
