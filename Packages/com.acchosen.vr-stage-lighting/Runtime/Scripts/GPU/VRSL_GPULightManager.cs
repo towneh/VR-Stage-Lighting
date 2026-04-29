@@ -39,6 +39,40 @@ namespace VRSL
         [Tooltip("Assign Hidden/VRSL/DeferredLighting (the VRSLDeferredLighting shader asset).")]
         public Shader lightingShader;
 
+        [Header("Volumetric")]
+        [Tooltip("Enable raymarched in-scattering as a third pass after the surface lighting "
+               + "pass. Produces a real beam-in-haze effect from the same _VRSLLights buffer "
+               + "the surface pass uses. Half-res with bilateral upsample.")]
+        public bool volumetricEnabled = false;
+
+        [Tooltip("Assign Hidden/VRSL/VolumetricLighting (the VRSLVolumetricLighting shader asset).")]
+        public Shader volumetricShader;
+
+        [Range(8, 64)]
+        [Tooltip("Number of integration steps along each view ray. Higher = smoother, more cost. "
+               + "Cost scales linearly with step count and active fixture count.")]
+        public int volumetricStepCount = 32;
+
+        [Range(0f, 2f)]
+        [Tooltip("Base scattering density. Lower = subtler shafts; higher = denser haze. "
+               + "Tune relative to scene scale.")]
+        public float volumetricDensity = 0.1f;
+
+        [Range(-0.95f, 0.95f)]
+        [Tooltip("Henyey–Greenstein anisotropy. 0 = isotropic (cones look the same from any "
+               + "angle); positive values brighten when looking down the beam; negative values "
+               + "back-scatter.")]
+        public float volumetricAnisotropy = 0.2f;
+
+        [Tooltip("Colour tint applied to the accumulated in-scattering. White = no tint.")]
+        [ColorUsage(showAlpha: false, hdr: false)]
+        public Color volumetricTint = Color.white;
+
+        [Range(0f, 8f)]
+        [Tooltip("Global intensity multiplier for the volumetric contribution. Multiplies on "
+               + "top of the per-light intensity already encoded in _VRSLLights.")]
+        public float volumetricIntensity = 1f;
+
         [Header("Gobo Wheel")]
         [Tooltip("Gobo textures available to all DMX fixtures. Packed into a shared Texture2DArray. "
                + "DMX channel +11 selects the slot (0 = open/no gobo). Order matches DMX value range.")]
@@ -55,7 +89,17 @@ namespace VRSL
         public int  FixtureCount   { get; private set; }
         public int  GoboCount      { get; private set; }
         public int  ComputeKernel  { get; private set; }
-        public Material LightingMaterial { get; private set; }
+        public Material LightingMaterial   { get; private set; }
+        public Material VolumetricMaterial { get; private set; }
+
+        // Volumetric shader parameter packing — read by VRSLRealtimeLightFeature each frame
+        // and uploaded as global vectors before the raymarch pass.
+        public Vector4 VolumetricStepParams =>
+            new Vector4(volumetricStepCount, 0f, 0f, volumetricAnisotropy);
+        public Vector4 VolumetricDensityParams =>
+            new Vector4(volumetricDensity, 0f, 0f, 0f);
+        public Vector4 VolumetricFogTintParams =>
+            new Vector4(volumetricTint.r, volumetricTint.g, volumetricTint.b, volumetricIntensity);
 
         const int GoboResolution = 256;
 
@@ -183,6 +227,9 @@ namespace VRSL
 
             if (lightingShader != null && LightingMaterial == null)
                 LightingMaterial = new Material(lightingShader) { hideFlags = HideFlags.HideAndDontSave };
+
+            if (volumetricShader != null && VolumetricMaterial == null)
+                VolumetricMaterial = new Material(volumetricShader) { hideFlags = HideFlags.HideAndDontSave };
 
             BuildGoboArray();
             _configDirty = true;

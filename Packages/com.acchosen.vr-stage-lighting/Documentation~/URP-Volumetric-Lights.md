@@ -1,6 +1,6 @@
 # VRSL URP Volumetric Lights — Design Document
 
-> **Status:** Forward-looking design document. This describes the planned volumetric extension of the URP GPU realtime light path on the `urp-volumetric-lights` branch. Implementation has not begun. Numbers, struct layouts, and shader names are intent, not finalised reference. The companion document `URP-Realtime-Lights.md` describes the surface-illumination pipeline this work builds on and is implemented and merged.
+> **Status:** Active implementation on the `urp-volumetric-lights` branch. The DMX raymarched volumetric pass has landed (clean uniform density, multi-light, screen-space depth occlusion, half-res with bilateral upsample) and is gated by a manager-side toggle. Modulated noise density, AudioLink port, wash mover tuning, fixture-shell driving, and new GPU prefab variants are pending — see *Phasing* for the ordered list. The companion document `URP-Realtime-Lights.md` describes the surface-illumination pipeline this work builds on.
 
 ---
 
@@ -199,16 +199,15 @@ This is a **clearer split between platforms**, not a consolidation. The Static c
 
 The work is sequenced so each step produces something visually evaluable before the next is committed.
 
-1. **Compute infrastructure spike** — wire the volumetric raster pass into `VRSLRealtimeLightFeature`, render a single hardcoded clean cone for the first DMX spot fixture. Decision gate: confirm the half-res RT + bilateral upsample edge quality on a real scene.
-2. **Multi-light raymarch** — read `_VRSLLights`, loop over all DMX fixtures, gobo sampling reused from `VRSLLightingLibrary.hlsl`. Decision gate: visual parity with the volumetric mesh shader at typical fixture counts.
-3. **Modulated density variant** — second `multi_compile`, 3D noise sampling, manager toggle exposed.
-4. **DMX wash mover** — same shader, density/falloff tuning for the wider cone.
-5. **AudioLink port** — `VRSLAudioLinkRealtimeLightFeature` gets the same volumetric pass; `VRSLAudioLinkLightUpdate.compute` already produces compatible `VRSLLightData`, so the shader-side change is zero. AudioLink wash follows.
-6. **Fixture-shell driving on Realtime components** — adds `fixtureShellRenderers` field and the property-block push, so a GPU prefab works without a Static sibling.
-7. **GPU prefab variants** — new prefabs with no volumetric mesh, no Static, no projection disc. Old prefabs unchanged. Update the Editor setup utility to optionally generate the new variant.
-8. **CHANGELOG + setup-guide section** in this document, describing the final-state pipeline.
+1. ✅ **Compute infrastructure + multi-light raymarch (DMX)** — volumetric pass added to `VRSLRealtimeLightFeature`, half-res RT and half-res min-depth allocated as transient render-graph resources, three sub-passes (depth downsample → raymarch → bilateral upsample) record from one `VolumetricPass.RecordRenderGraph`. Reads `_VRSLLights` directly; gobo sampling reuses `SampleGobo()` (lifted into `VRSLLightingLibrary.hlsl` as a shared definition for both surface and volumetric). Density is uniform, manager-driven. *Decision gate:* visual evaluation on the DMX example scene.
+2. **Modulated density variant** — second `multi_compile` keyword, 3D noise sampling at each ray step, manager toggle exposed.
+3. **DMX wash mover** — same shader, density/falloff tuning for the wider cone.
+4. **AudioLink port** — `VRSLAudioLinkRealtimeLightFeature` gets the same volumetric pass; `VRSLAudioLinkLightUpdate.compute` already produces compatible `VRSLLightData`, so the shader-side change is zero. AudioLink wash follows.
+5. **Fixture-shell driving on Realtime components** — adds `fixtureShellRenderers` field and the property-block push, so a GPU prefab works without a Static sibling.
+6. **GPU prefab variants** — new prefabs with no volumetric mesh, no Static, no projection disc. Old prefabs unchanged. Update the Editor setup utility to optionally generate the new variant.
+7. **CHANGELOG + setup-guide section** in this document, describing the final-state pipeline.
 
-Each step is a separate commit on the `urp-volumetric-lights` branch. The branch merges to `main` in one PR after step 7 but the doc grows in place as the implementation lands.
+Each step is a separate commit on the `urp-volumetric-lights` branch. The branch merges to `main` in one PR after step 6 but the doc grows in place as the implementation lands.
 
 ---
 

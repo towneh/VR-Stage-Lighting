@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.Experimental.Rendering;
 using UnityEngine.Rendering;
 using UnityEngine.Rendering.Universal;
 using UnityEngine.Rendering.RenderGraphModule;
@@ -7,7 +8,7 @@ namespace VRSL
 {
     /// <summary>
     /// URP ScriptableRendererFeature (Unity 6 Render Graph API) that drives the
-    /// VRSL GPU realtime-light pipeline in two phases per frame:
+    /// VRSL GPU realtime-light pipeline in three phases per frame:
     ///
     ///   1. Compute pass  — dispatches VRSLDMXLightUpdate.compute, which reads the
     ///      three DMX RenderTextures and writes a VRSLLightData StructuredBuffer.
@@ -16,6 +17,12 @@ namespace VRSL
     ///   2. Fullscreen additive pass — after opaque rendering, reconstructs world
     ///      position from depth + normals and adds each GPU-decoded light's
     ///      contribution to the frame (Hidden/VRSL/DeferredLighting shader).
+    ///
+    ///   3. Volumetric pass (optional) — three Render Graph sub-passes that
+    ///      depth-downsample, raymarch in-scattering at half resolution, and
+    ///      bilaterally composite the result onto the camera colour target
+    ///      (Hidden/VRSL/VolumetricLighting shader). Toggled by the manager's
+    ///      volumetricEnabled flag.
     ///
     /// Requirements:
     ///   • A VRSL_GPULightManager in the scene with the textures and shaders assigned.
@@ -162,9 +169,149 @@ namespace VRSL
             }
         }
 
+        // ── Volumetric pass: raymarched in-scattering ──────────────────────────
+        // Records three Render Graph sub-passes. Half-res transient RTs are
+        // created with rg.CreateTexture so they live exactly for this frame.
+        class VolumetricPass : ScriptableRenderPass
+        {
+            class DownsampleData
+            {
+                public Material      material;
+                public TextureHandle fullDepth;
+            }
+
+            class RaymarchData
+            {
+                public Material      material;
+                public TextureHandle halfDepth;
+                public BufferHandle  lightDataBuffer;
+                public int           lightCount;
+                public Vector4       stepParams;
+                public Vector4       densityParams;
+                public Vector4       fogTintParams;
+            }
+
+            class UpsampleData
+            {
+                public Material      material;
+                public TextureHandle halfRT;
+                public TextureHandle halfDepth;
+            }
+
+            public override void RecordRenderGraph(RenderGraph rg, ContextContainer frame)
+            {
+                var mgr = VRSL_GPULightManager.Instance;
+                if (mgr == null || !mgr.volumetricEnabled
+                    || mgr.FixtureCount == 0
+                    || mgr.VolumetricMaterial == null
+                    || mgr.LightDataBuffer == null) return;
+
+                var resources = frame.Get<UniversalResourceData>();
+                var camData   = frame.Get<UniversalCameraData>();
+
+                if (!resources.cameraDepthTexture.IsValid()) return;
+
+                int halfW = Mathf.Max(1, camData.cameraTargetDescriptor.width  / 2);
+                int halfH = Mathf.Max(1, camData.cameraTargetDescriptor.height / 2);
+
+                var halfDepthDesc = new TextureDesc(halfW, halfH)
+                {
+                    name        = "VRSL Volumetric Half Depth",
+                    format      = GraphicsFormat.R32_SFloat,
+                    clearBuffer = false,
+                    filterMode  = FilterMode.Point,
+                };
+                var halfRTDesc = new TextureDesc(halfW, halfH)
+                {
+                    name        = "VRSL Volumetric Half RT",
+                    format      = GraphicsFormat.R16G16B16A16_SFloat,
+                    clearBuffer = true,
+                    clearColor  = Color.clear,
+                    filterMode  = FilterMode.Point,
+                };
+                TextureHandle halfDepth = rg.CreateTexture(halfDepthDesc);
+                TextureHandle halfRT    = rg.CreateTexture(halfRTDesc);
+
+                BufferHandle lightDataHandle = rg.ImportBuffer(mgr.LightDataBuffer);
+
+                // Sub-pass 1 — depth downsample
+                using (var builder = rg.AddRasterRenderPass<DownsampleData>(
+                    "VRSL Vol Depth Downsample", out var d))
+                {
+                    d.material  = mgr.VolumetricMaterial;
+                    d.fullDepth = resources.cameraDepthTexture;
+
+                    builder.SetRenderAttachment(halfDepth, 0, AccessFlags.Write);
+                    builder.UseTexture(d.fullDepth, AccessFlags.Read);
+
+                    builder.SetRenderFunc((DownsampleData p, RasterGraphContext ctx) =>
+                    {
+                        ctx.cmd.DrawProcedural(Matrix4x4.identity, p.material, 0,
+                            MeshTopology.Triangles, 3, 1);
+                    });
+                }
+
+                // Sub-pass 2 — raymarch
+                using (var builder = rg.AddRasterRenderPass<RaymarchData>(
+                    "VRSL Vol Raymarch", out var d))
+                {
+                    d.material        = mgr.VolumetricMaterial;
+                    d.halfDepth       = halfDepth;
+                    d.lightDataBuffer = lightDataHandle;
+                    d.lightCount      = mgr.FixtureCount;
+                    d.stepParams      = mgr.VolumetricStepParams;
+                    d.densityParams   = mgr.VolumetricDensityParams;
+                    d.fogTintParams   = mgr.VolumetricFogTintParams;
+
+                    builder.SetRenderAttachment(halfRT, 0, AccessFlags.Write);
+                    builder.UseTexture(d.halfDepth, AccessFlags.Read);
+                    builder.UseBuffer(d.lightDataBuffer, AccessFlags.Read);
+                    builder.AllowGlobalStateModification(true);
+
+                    builder.SetRenderFunc((RaymarchData p, RasterGraphContext ctx) =>
+                    {
+                        var cmd = ctx.cmd;
+                        cmd.SetGlobalBuffer( "_VRSLLights",            p.lightDataBuffer);
+                        cmd.SetGlobalInteger("_VRSLLightCount",        p.lightCount);
+                        cmd.SetGlobalTexture("_VRSLVolHalfResDepth",   p.halfDepth);
+                        cmd.SetGlobalVector( "_VRSLVolStepCount",      p.stepParams);
+                        cmd.SetGlobalVector( "_VRSLVolDensity",        p.densityParams);
+                        cmd.SetGlobalVector( "_VRSLVolFogTint",        p.fogTintParams);
+                        cmd.DrawProcedural(Matrix4x4.identity, p.material, 1,
+                            MeshTopology.Triangles, 3, 1);
+                    });
+                }
+
+                // Sub-pass 3 — bilateral upsample composite onto camera colour
+                using (var builder = rg.AddRasterRenderPass<UpsampleData>(
+                    "VRSL Vol Upsample", out var d))
+                {
+                    d.material  = mgr.VolumetricMaterial;
+                    d.halfRT    = halfRT;
+                    d.halfDepth = halfDepth;
+
+                    builder.SetRenderAttachment(resources.activeColorTexture, 0, AccessFlags.ReadWrite);
+                    builder.UseTexture(d.halfRT,    AccessFlags.Read);
+                    builder.UseTexture(d.halfDepth, AccessFlags.Read);
+                    builder.UseTexture(resources.cameraDepthTexture, AccessFlags.Read);
+                    builder.AllowGlobalStateModification(true);
+
+                    builder.SetRenderFunc((UpsampleData p, RasterGraphContext ctx) =>
+                    {
+                        var cmd = ctx.cmd;
+                        cmd.SetGlobalTexture("_VRSLVolumetricRT",    p.halfRT);
+                        cmd.SetGlobalTexture("_VRSLVolHalfResDepth", p.halfDepth);
+                        cmd.DrawProcedural(Matrix4x4.identity, p.material, 2,
+                            MeshTopology.Triangles, 3, 1);
+                    });
+                }
+            }
+        }
+
         // ── ScriptableRendererFeature ──────────────────────────────────────────
-        ComputePass  _computePass;
-        LightingPass _lightingPass;
+        ComputePass    _computePass;
+        LightingPass   _lightingPass;
+        VolumetricPass _volumetricPass;
 
         public override void Create()
         {
@@ -178,6 +325,11 @@ namespace VRSL
                 // lit geometry but before transparents
                 renderPassEvent = RenderPassEvent.AfterRenderingOpaques
             };
+            _volumetricPass = new VolumetricPass
+            {
+                // After the surface lighting pass, before transparents and skybox
+                renderPassEvent = (RenderPassEvent)((int)RenderPassEvent.AfterRenderingOpaques + 1)
+            };
         }
 
         public override void AddRenderPasses(ScriptableRenderer renderer, ref RenderingData renderingData)
@@ -185,12 +337,15 @@ namespace VRSL
             var mgr = VRSL_GPULightManager.Instance;
             if (mgr == null) return;
             _lightingPass.ConfigureInput(ScriptableRenderPassInput.Normal | ScriptableRenderPassInput.Depth);
+            _volumetricPass.ConfigureInput(ScriptableRenderPassInput.Depth);
             // Gobo array is a plain Texture2DArray — set as a global here rather than
             // inside the render graph where only TextureHandle is accepted.
             if (mgr.GoboArray != null)
                 Shader.SetGlobalTexture("_VRSLGobos", mgr.GoboArray);
             renderer.EnqueuePass(_computePass);
             renderer.EnqueuePass(_lightingPass);
+            if (mgr.volumetricEnabled && mgr.VolumetricMaterial != null)
+                renderer.EnqueuePass(_volumetricPass);
         }
     }
 }
