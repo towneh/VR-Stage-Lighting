@@ -30,6 +30,14 @@ namespace VRSL
     public class VRStageLighting_AudioLink_RealtimeLight : MonoBehaviour
 #endif
     {
+        // ── Fixture type ──────────────────────────────────────────────────────
+        [Tooltip("Selects the fixture archetype this component represents. Drives "
+               + "which inspector sections are shown — movers expose pan/tilt and "
+               + "targetToFollow, spotlights expose gobo selection, statics hide "
+               + "movement and gobo entirely. Pick Custom to keep every section "
+               + "visible regardless of preset.")]
+        public AudioLinkFixtureType fixtureType = AudioLinkFixtureType.MoverSpotlight;
+
         // ── AudioLink ─────────────────────────────────────────────────────────
         [Tooltip("Enable or disable AudioLink reaction for this fixture. When disabled the light contributes zero intensity to the scene.")]
         public bool enableAudioLink = true;
@@ -233,6 +241,19 @@ namespace VRSL
             return transform.forward;
         }
 
+    }
+
+    /// <summary>Fixture archetype for <see cref="VRStageLighting_AudioLink_RealtimeLight"/>.
+    /// Drives inspector field visibility — movers expose pan/tilt, spotlights expose gobo
+    /// selection, static fixtures hide both. Custom keeps every section visible for
+    /// authoring novel fixtures that don't fit the four built-in shapes.</summary>
+    public enum AudioLinkFixtureType
+    {
+        MoverSpotlight = 0,
+        MoverWashlight = 1,
+        StaticBlinder  = 2,
+        StaticParLight = 3,
+        Custom         = 4,
     }
 
     /// <summary>Color source for <see cref="VRStageLighting_AudioLink_RealtimeLight"/>.</summary>

@@ -396,6 +396,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 31c146941b797bd4c9364ba1cb789b3a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: VRSL.Core::VRSL.VRStageLighting_AudioLink_RealtimeLight
+  fixtureType: 0
   enableAudioLink: 1
   band: 0
   delay: 0
@@ -414,6 +415,7 @@ MonoBehaviour:
   enablePanTilt: 1
   panTransform: {fileID: 420843966083367113}
   tiltTransform: {fileID: 3623839858890756453}
+  targetToFollow: {fileID: 656931347406707997}
   fixtureShellRenderers:
   - {fileID: 86425701171921168}
   - {fileID: 3992678554846720072}

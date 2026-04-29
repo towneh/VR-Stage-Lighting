@@ -10,6 +10,9 @@ namespace VRSL
     {
         GUIStyle _sectionLabel;
 
+        // Fixture Type
+        SerializedProperty _fixtureType;
+
         // AudioLink Settings
         SerializedProperty _enableAudioLink;
         SerializedProperty _band;
@@ -55,6 +58,8 @@ namespace VRSL
         {
             _sectionLabel = MakeSectionLabel();
 
+            _fixtureType     = serializedObject.FindProperty("fixtureType");
+
             _enableAudioLink = serializedObject.FindProperty("enableAudioLink");
             _band            = serializedObject.FindProperty("band");
             _delay           = serializedObject.FindProperty("delay");
@@ -86,6 +91,21 @@ namespace VRSL
             serializedObject.Update();
 
             VRSL_EditorHeader.Draw();
+
+            // ── Fixture Type ──────────────────────────────────────────────────
+            // Top-level archetype dropdown — drives which sections below are shown.
+            GUILayout.Label("Fixture Type", _sectionLabel);
+            EditorGUILayout.PropertyField(_fixtureType, new GUIContent("Type", _fixtureType.tooltip));
+
+            var type = (AudioLinkFixtureType)_fixtureType.enumValueIndex;
+            bool isMover     = type == AudioLinkFixtureType.MoverSpotlight
+                            || type == AudioLinkFixtureType.MoverWashlight;
+            bool showMovement = isMover || type == AudioLinkFixtureType.Custom;
+            bool showGobo     = type == AudioLinkFixtureType.MoverSpotlight
+                             || type == AudioLinkFixtureType.Custom;
+
+            EditorGUILayout.Space();
+            EditorGUILayout.Space();
 
             // ── AudioLink Settings ────────────────────────────────────────────
             GUILayout.Label("AudioLink Settings", _sectionLabel);
@@ -120,22 +140,32 @@ namespace VRSL
             EditorGUILayout.Space();
 
             // ── Movement Settings ─────────────────────────────────────────────
-            GUILayout.Label("Movement Settings", _sectionLabel);
-            EditorGUILayout.PropertyField(_enablePanTilt);
-            EditorGUILayout.PropertyField(_panTransform);
-            EditorGUILayout.PropertyField(_tiltTransform);
-            EditorGUILayout.PropertyField(_targetToFollow);
+            // Movers (Spotlight, Washlight) and Custom show pan/tilt + target follow.
+            // Static fixtures hide this section since they don't pan or tilt.
+            if (showMovement)
+            {
+                GUILayout.Label("Movement Settings", _sectionLabel);
+                EditorGUILayout.PropertyField(_enablePanTilt);
+                EditorGUILayout.PropertyField(_panTransform);
+                EditorGUILayout.PropertyField(_tiltTransform);
+                EditorGUILayout.PropertyField(_targetToFollow);
 
-            EditorGUILayout.Space();
-            EditorGUILayout.Space();
+                EditorGUILayout.Space();
+                EditorGUILayout.Space();
+            }
 
             // ── Fixture Settings ──────────────────────────────────────────────
-            GUILayout.Label("Fixture Settings", _sectionLabel);
-            EditorGUILayout.PropertyField(_goboIndex);
-            EditorGUILayout.PropertyField(_goboSpinSpeed);
+            // Spotlights and Custom show gobo selection. Washlights, Blinders,
+            // ParLights don't have gobos — hide the section entirely.
+            if (showGobo)
+            {
+                GUILayout.Label("Fixture Settings", _sectionLabel);
+                EditorGUILayout.PropertyField(_goboIndex);
+                EditorGUILayout.PropertyField(_goboSpinSpeed);
 
-            EditorGUILayout.Space();
-            EditorGUILayout.Space();
+                EditorGUILayout.Space();
+                EditorGUILayout.Space();
+            }
 
             // ── Fixture Shell ─────────────────────────────────────────────────
             GUILayout.Label("Fixture Shell", _sectionLabel);

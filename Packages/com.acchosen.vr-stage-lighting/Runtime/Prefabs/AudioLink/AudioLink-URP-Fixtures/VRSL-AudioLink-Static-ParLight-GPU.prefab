@@ -45,6 +45,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 31c146941b797bd4c9364ba1cb789b3a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: VRSL.Core::VRSL.VRStageLighting_AudioLink_RealtimeLight
+  fixtureType: 3
   enableAudioLink: 1
   band: 0
   delay: 0
