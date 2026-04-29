@@ -204,7 +204,7 @@ The work is sequenced so each step produces something visually evaluable before 
 3. ✅ **Fixture-shell driving on Realtime components** — `VRStageLighting_DMX_RealtimeLight` and `VRStageLighting_AudioLink_RealtimeLight` gain a `fixtureShellRenderers[]` list and a `DriveFixtureShells()` method that pushes a `MaterialPropertyBlock` mirroring what the legacy Static component pushed (DMX channel, intensities, emission tint, pan/tilt offsets, gobo selection). Brought forward together with the `*_Static` inheritance rip-out (see below): GPU prefabs are now standalone — the Realtime light component is the sole authoring surface, no `*_Static` sibling participates, and the manager's volumetric toggle was removed since dropping the cone mesh leaves no fallback to disable to.
 4. **Modulated density variant** — second `multi_compile` keyword, 3D noise sampling at each ray step, manager toggle exposed.
 5. **DMX wash + AudioLink wash mover tuning** — density/falloff tuning for the wider cone shape on both paths.
-6. **GPU prefab variants** — strip Static / cone mesh / projection disc from existing GPU prefabs (utility shipped, see `VRSL_GPUPrefabConverter`). Old prefabs untouched.
+6. ✅ **GPU prefab variants** — existing GPU prefabs converted to standalone shape: Static / cone mesh / projection disc removed, `fixtureShellRenderers` wired to the LampFixture body MeshRenderers. Legacy non-GPU prefabs untouched.
 7. **CHANGELOG + setup-guide section** in this document, describing the final-state pipeline.
 
 Each step is a separate commit on the `urp-volumetric-lights` branch. The branch merges to `main` in one PR after step 6 but the doc grows in place as the implementation lands.
