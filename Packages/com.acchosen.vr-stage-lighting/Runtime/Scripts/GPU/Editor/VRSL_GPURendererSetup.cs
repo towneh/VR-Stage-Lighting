@@ -9,29 +9,37 @@ using UnityEngine.Rendering.Universal;
 namespace VRSL.EditorScripts
 {
     /// <summary>
-    /// One-shot Editor utility that wires up a URP renderer asset and the
-    /// active scene for the VRSL DMX GPU realtime light path:
+    /// Editor utilities that wire up the VRSL DMX GPU realtime light path.
+    /// Two independent menu actions so authors can configure the project
+    /// without modifying the active scene, and vice versa:
     ///
-    ///   • Sets the URP renderer's Rendering Path to Forward+.
-    ///   • Sets Depth Priming Mode to Disabled (required so the depth normals
-    ///     prepass populates correctly under Forward+).
-    ///   • Enables Depth Texture on the URP asset.
-    ///   • Adds VRSLRealtimeLightFeature as a renderer feature if missing.
-    ///   • Adds VRSL_GPULightManager to the active scene if missing and
-    ///     auto-assigns its compute shader and lighting / volumetric shaders.
+    ///   • <b>Configure URP Renderer for GPU Lights (DMX)</b> — project-level
+    ///     only. Sets the active URP renderer to Forward+, disables Depth
+    ///     Priming, enables the URP asset's Depth Texture, and appends
+    ///     VRSLRealtimeLightFeature as a sub-asset.
     ///
-    /// Idempotent — safe to run repeatedly. Reports what changed.
+    ///   • <b>Add VRSL GPU Light Manager to Active Scene</b> — scene-level
+    ///     only. Creates a VRSL_GPULightManager in the active scene if missing
+    ///     and auto-assigns its compute, lighting, and volumetric shader
+    ///     references from the package.
+    ///
+    /// Both actions are idempotent — safe to re-run. Each reports what
+    /// changed via a single dialog.
     /// </summary>
     public static class VRSL_GPURendererSetup
     {
-        const string MENU_PATH              = "VRSL/Setup URP GPU Realtime Lights (DMX)";
+        const string MENU_PROJECT = "VRSL/Configure URP Renderer for GPU Lights (DMX)";
+        const string MENU_SCENE   = "VRSL/Add VRSL GPU Light Manager to Active Scene";
+
         const string FEATURE_NAME           = "VRSL Realtime Light Feature";
         const string LIGHTING_SHADER_NAME   = "Hidden/VRSL/DeferredLighting";
         const string VOLUMETRIC_SHADER_NAME = "Hidden/VRSL/VolumetricLighting";
         const string COMPUTE_SHADER_FILTER  = "VRSLDMXLightUpdate t:ComputeShader";
 
-        [MenuItem(MENU_PATH)]
-        public static void Setup()
+        // ── Project-level: URP renderer + URP asset configuration ─────────────
+
+        [MenuItem(MENU_PROJECT)]
+        public static void ConfigureRenderer()
         {
             var report = new List<string>();
 
@@ -47,7 +55,7 @@ namespace VRSL.EditorScripts
             var rendererData = ResolveRendererData(urp);
             if (rendererData == null) return;
 
-            // ── Renderer asset: rendering path + depth priming ────────────────
+            // Renderer asset: rendering path + depth priming
             using (var so = new SerializedObject(rendererData))
             {
                 var renderingMode = so.FindProperty("m_RenderingMode");
@@ -69,14 +77,14 @@ namespace VRSL.EditorScripts
                 so.ApplyModifiedProperties();
             }
 
-            // ── Renderer feature ──────────────────────────────────────────────
+            // Renderer feature
             if (!HasFeature<VRSLRealtimeLightFeature>(rendererData))
             {
                 AddFeature<VRSLRealtimeLightFeature>(rendererData, FEATURE_NAME);
                 report.Add($"Added '{FEATURE_NAME}' to renderer.");
             }
 
-            // ── URP asset: depth texture ──────────────────────────────────────
+            // URP asset: depth texture
             using (var so = new SerializedObject(urp))
             {
                 var requireDepth = so.FindProperty("m_RequireDepthTexture");
@@ -88,17 +96,84 @@ namespace VRSL.EditorScripts
                 }
             }
 
-            // ── Scene: GPU light manager ──────────────────────────────────────
-            EnsureManagerInActiveScene(report);
-
             EditorUtility.SetDirty(rendererData);
             EditorUtility.SetDirty(urp);
             AssetDatabase.SaveAssets();
 
             string msg = report.Count == 0
-                ? "Already configured — nothing to change."
-                : "Done.\n\n• " + string.Join("\n• ", report);
+                ? "Renderer already configured — nothing to change."
+                : "Renderer configured.\n\n• " + string.Join("\n• ", report) +
+                  "\n\nNext: run '" + MENU_SCENE + "' to drop a manager into a scene.";
             EditorUtility.DisplayDialog("VRSL URP Setup", msg, "OK");
+        }
+
+        // ── Scene-level: GPU light manager GameObject ─────────────────────────
+
+        [MenuItem(MENU_SCENE)]
+        public static void AddManagerToScene()
+        {
+            var report = new List<string>();
+
+            var manager = Object.FindFirstObjectByType<VRSL_GPULightManager>();
+            if (manager == null)
+            {
+                var go = new GameObject("VRSL GPU Light Manager");
+                Undo.RegisterCreatedObjectUndo(go, "Create VRSL GPU Light Manager");
+                manager = Undo.AddComponent<VRSL_GPULightManager>(go);
+                EditorSceneManager.MarkSceneDirty(go.scene);
+                report.Add("Created 'VRSL GPU Light Manager' in active scene.");
+            }
+            else
+            {
+                report.Add("Manager already in scene; refreshing shader references.");
+            }
+
+            bool assignedAny = false;
+
+            if (manager.computeShader == null)
+            {
+                var compute = FindAsset<ComputeShader>(COMPUTE_SHADER_FILTER);
+                if (compute != null)
+                {
+                    Undo.RecordObject(manager, "Assign VRSL Compute Shader");
+                    manager.computeShader = compute;
+                    assignedAny = true;
+                    report.Add("Assigned compute shader.");
+                }
+            }
+
+            if (manager.lightingShader == null)
+            {
+                var sh = Shader.Find(LIGHTING_SHADER_NAME);
+                if (sh != null)
+                {
+                    Undo.RecordObject(manager, "Assign VRSL Lighting Shader");
+                    manager.lightingShader = sh;
+                    assignedAny = true;
+                    report.Add("Assigned lighting shader.");
+                }
+            }
+
+            if (manager.volumetricShader == null)
+            {
+                var sh = Shader.Find(VOLUMETRIC_SHADER_NAME);
+                if (sh != null)
+                {
+                    Undo.RecordObject(manager, "Assign VRSL Volumetric Shader");
+                    manager.volumetricShader = sh;
+                    assignedAny = true;
+                    report.Add("Assigned volumetric shader.");
+                }
+            }
+
+            if (assignedAny) EditorUtility.SetDirty(manager);
+
+            EditorUtility.DisplayDialog("VRSL URP Setup",
+                "Done.\n\n• " + string.Join("\n• ", report) +
+                "\n\nReminder: assign the four DMX RenderTextures on the manager " +
+                "(scene-specific — not auto-discoverable).", "OK");
+
+            Selection.activeObject = manager.gameObject;
         }
 
         // ── Helpers ────────────────────────────────────────────────────────────
@@ -171,60 +246,6 @@ namespace VRSL.EditorScripts
             EditorUtility.SetDirty(feature);
             AssetDatabase.SaveAssets();
             AssetDatabase.ImportAsset(AssetDatabase.GetAssetPath(rendererData));
-        }
-
-        static void EnsureManagerInActiveScene(List<string> report)
-        {
-            var manager = Object.FindFirstObjectByType<VRSL_GPULightManager>();
-            if (manager == null)
-            {
-                var go = new GameObject("VRSL GPU Light Manager");
-                Undo.RegisterCreatedObjectUndo(go, "Create VRSL GPU Light Manager");
-                manager = Undo.AddComponent<VRSL_GPULightManager>(go);
-                EditorSceneManager.MarkSceneDirty(go.scene);
-                report.Add("Added VRSL GPU Light Manager to active scene.");
-            }
-
-            bool changed = false;
-
-            if (manager.computeShader == null)
-            {
-                var compute = FindAsset<ComputeShader>(COMPUTE_SHADER_FILTER);
-                if (compute != null)
-                {
-                    Undo.RecordObject(manager, "Assign VRSL Compute Shader");
-                    manager.computeShader = compute;
-                    changed = true;
-                }
-            }
-
-            if (manager.lightingShader == null)
-            {
-                var sh = Shader.Find(LIGHTING_SHADER_NAME);
-                if (sh != null)
-                {
-                    Undo.RecordObject(manager, "Assign VRSL Lighting Shader");
-                    manager.lightingShader = sh;
-                    changed = true;
-                }
-            }
-
-            if (manager.volumetricShader == null)
-            {
-                var sh = Shader.Find(VOLUMETRIC_SHADER_NAME);
-                if (sh != null)
-                {
-                    Undo.RecordObject(manager, "Assign VRSL Volumetric Shader");
-                    manager.volumetricShader = sh;
-                    changed = true;
-                }
-            }
-
-            if (changed)
-            {
-                EditorUtility.SetDirty(manager);
-                report.Add("Auto-assigned manager shader references.");
-            }
         }
 
         static T FindAsset<T>(string filter) where T : Object
