@@ -31,6 +31,7 @@ namespace VRSL
         SerializedProperty _enablePanTilt;
         SerializedProperty _panTransform;
         SerializedProperty _tiltTransform;
+        SerializedProperty _targetToFollow;
 
         // Fixture Settings
         SerializedProperty _goboIndex;
@@ -72,6 +73,7 @@ namespace VRSL
             _enablePanTilt   = serializedObject.FindProperty("enablePanTilt");
             _panTransform    = serializedObject.FindProperty("panTransform");
             _tiltTransform   = serializedObject.FindProperty("tiltTransform");
+            _targetToFollow  = serializedObject.FindProperty("targetToFollow");
 
             _goboIndex       = serializedObject.FindProperty("goboIndex");
             _goboSpinSpeed   = serializedObject.FindProperty("goboSpinSpeed");
@@ -122,6 +124,7 @@ namespace VRSL
             EditorGUILayout.PropertyField(_enablePanTilt);
             EditorGUILayout.PropertyField(_panTransform);
             EditorGUILayout.PropertyField(_tiltTransform);
+            EditorGUILayout.PropertyField(_targetToFollow);
 
             EditorGUILayout.Space();
             EditorGUILayout.Space();

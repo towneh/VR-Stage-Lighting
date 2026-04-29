@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.Animations;
 #if UDONSHARP
 using UdonSharp;
 using VRC.SDKBase;
@@ -107,6 +108,14 @@ namespace VRSL
         [Tooltip("Transform rotated on X for tilt. Its world-space forward is sent to the GPU as the light direction.")]
         public Transform tiltTransform;
 
+        [Tooltip("Optional follow target. When assigned, the AimConstraint on tiltTransform "
+               + "is rebound to this Transform at Start, so the fixture aims at it instead "
+               + "of the prefab's per-instance PanTiltTarget child. Useful when many movers "
+               + "should track a shared target (e.g., a stage mark, a performer rig, or a "
+               + "DoublePanTiltTarget driven by an animation). Leave empty to keep the "
+               + "prefab's default aim source (the per-instance PanTiltTarget).")]
+        public Transform targetToFollow;
+
         // ── Fixture shell driving ─────────────────────────────────────────────
         [Tooltip("MeshRenderers on the fixture body that should react to AudioLink (lit "
                + "lamp lens, status indicators, etc.). When a sibling "
@@ -121,6 +130,25 @@ namespace VRSL
         void Start()
         {
             DriveFixtureShells();
+            ApplyTargetToFollow();
+        }
+
+        // When targetToFollow is set, rebind the AimConstraint on tiltTransform so the
+        // fixture aims at the supplied Transform rather than the prefab's per-instance
+        // PanTiltTarget. No-op when targetToFollow is null — the prefab's existing
+        // AimConstraint source (PanTiltTarget) is kept.
+        public void ApplyTargetToFollow()
+        {
+            if (targetToFollow == null || tiltTransform == null) return;
+            var aim = tiltTransform.GetComponent<AimConstraint>();
+            if (aim == null) return;
+            var src = new ConstraintSource
+            {
+                sourceTransform = targetToFollow,
+                weight = 1f,
+            };
+            if (aim.sourceCount > 0) aim.SetSource(0, src);
+            else                     aim.AddSource(src);
         }
 
         // Pushes a MaterialPropertyBlock to the body MeshRenderers so the legacy
