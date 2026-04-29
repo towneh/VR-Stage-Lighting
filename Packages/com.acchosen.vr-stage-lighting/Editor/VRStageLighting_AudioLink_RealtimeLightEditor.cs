@@ -19,8 +19,10 @@ namespace VRSL
         // General Settings
         SerializedProperty _maxIntensity;
         SerializedProperty _finalIntensity;
+        SerializedProperty _globalIntensity;
         SerializedProperty _colorMode;
         SerializedProperty _emissionColor;
+        SerializedProperty _textureSamplingCoordinates;
         SerializedProperty _isPointLight;
         SerializedProperty _spotAngle;
         SerializedProperty _range;
@@ -57,13 +59,15 @@ namespace VRSL
             _delay           = serializedObject.FindProperty("delay");
             _bandMultiplier  = serializedObject.FindProperty("bandMultiplier");
 
-            _maxIntensity    = serializedObject.FindProperty("maxIntensity");
-            _finalIntensity  = serializedObject.FindProperty("finalIntensity");
-            _colorMode       = serializedObject.FindProperty("colorMode");
-            _emissionColor   = serializedObject.FindProperty("emissionColor");
-            _isPointLight    = serializedObject.FindProperty("isPointLight");
-            _spotAngle       = serializedObject.FindProperty("spotAngle");
-            _range           = serializedObject.FindProperty("range");
+            _maxIntensity              = serializedObject.FindProperty("maxIntensity");
+            _finalIntensity            = serializedObject.FindProperty("finalIntensity");
+            _globalIntensity           = serializedObject.FindProperty("globalIntensity");
+            _colorMode                 = serializedObject.FindProperty("colorMode");
+            _emissionColor             = serializedObject.FindProperty("emissionColor");
+            _textureSamplingCoordinates = serializedObject.FindProperty("textureSamplingCoordinates");
+            _isPointLight              = serializedObject.FindProperty("isPointLight");
+            _spotAngle                 = serializedObject.FindProperty("spotAngle");
+            _range                     = serializedObject.FindProperty("range");
 
             _enablePanTilt   = serializedObject.FindProperty("enablePanTilt");
             _panTransform    = serializedObject.FindProperty("panTransform");
@@ -95,8 +99,16 @@ namespace VRSL
             GUILayout.Label("General Settings", _sectionLabel);
             EditorGUILayout.PropertyField(_maxIntensity);
             EditorGUILayout.PropertyField(_finalIntensity);
+            EditorGUILayout.PropertyField(_globalIntensity);
             EditorGUILayout.PropertyField(_colorMode);
-            EditorGUILayout.PropertyField(_emissionColor);
+
+            // Show only the field relevant to the selected color mode.
+            var mode = (ALRealtimeColorMode)_colorMode.enumValueIndex;
+            if (mode == ALRealtimeColorMode.Emission)
+                EditorGUILayout.PropertyField(_emissionColor);
+            else if (mode == ALRealtimeColorMode.ColorTexture)
+                EditorGUILayout.PropertyField(_textureSamplingCoordinates);
+
             EditorGUILayout.PropertyField(_isPointLight);
             EditorGUILayout.PropertyField(_spotAngle);
             EditorGUILayout.PropertyField(_range, new GUIContent("Spot Range", _range.tooltip));

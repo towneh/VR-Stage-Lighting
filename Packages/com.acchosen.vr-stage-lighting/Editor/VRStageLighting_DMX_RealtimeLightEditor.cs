@@ -21,6 +21,7 @@ namespace VRSL
         // General Settings
         SerializedProperty _maxIntensity;
         SerializedProperty _finalIntensity;
+        SerializedProperty _globalIntensity;
         SerializedProperty _isPointLight;
         SerializedProperty _enableConeWidth;
         SerializedProperty _minSpotAngle;
@@ -72,6 +73,7 @@ namespace VRSL
 
             _maxIntensity        = serializedObject.FindProperty("maxIntensity");
             _finalIntensity      = serializedObject.FindProperty("finalIntensity");
+            _globalIntensity     = serializedObject.FindProperty("globalIntensity");
             _isPointLight        = serializedObject.FindProperty("isPointLight");
             _enableConeWidth     = serializedObject.FindProperty("enableConeWidth");
             _minSpotAngle        = serializedObject.FindProperty("minSpotAngle");
@@ -124,6 +126,7 @@ namespace VRSL
             GUILayout.Label("General Settings", _sectionLabel);
             EditorGUILayout.PropertyField(_maxIntensity);
             EditorGUILayout.PropertyField(_finalIntensity);
+            EditorGUILayout.PropertyField(_globalIntensity);
             EditorGUILayout.PropertyField(_isPointLight);
             EditorGUILayout.PropertyField(_enableConeWidth);
             EditorGUILayout.PropertyField(_minSpotAngle);

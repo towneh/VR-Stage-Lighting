@@ -239,10 +239,12 @@ namespace VRSL
             {
                 positionAndRange = new Vector4(pos.x, pos.y, pos.z, f.range),
                 forwardAndType   = new Vector4(forward.x, forward.y, forward.z, lightType),
-                // z = AudioLink active flag: 1 = sample AudioLink amplitude, 0 = static full intensity
+                // intensityParams.y carries the combined finalIntensity × globalIntensity
+                // scalar (folded CPU-side so the compute shader stays oblivious to the split).
+                // intensityParams.z = AudioLink active flag (1 = sample amplitude, 0 = static full).
                 intensityParams  = new Vector4(
                     f.maxIntensity,
-                    f.finalIntensity,
+                    f.finalIntensity * f.globalIntensity,
                     f.enableAudioLink ? 1f : 0f,
                     0f),
                 spotAngles       = new Vector4(innerHalf, outerHalf, 0f, 0f),
@@ -254,7 +256,14 @@ namespace VRSL
                 emissionColor    = new Vector4(linearEmission.r, linearEmission.g, linearEmission.b, 0f),
                 // reserved.x = gobo array index (0+ = slot); the inspector field is 1-based to
                 // match the established AudioLink Static convention (1 = open beam).
-                reserved         = new Vector4(f.goboIndex - 1f, f.goboSpinSpeed, 0f, 0f),
+                // reserved.y = gobo spin speed.
+                // reserved.zw = textureSamplingCoordinates UV — sampled by the compute shader
+                //               only when colorMode == ColorTexture (6).
+                reserved         = new Vector4(
+                    f.goboIndex - 1f,
+                    f.goboSpinSpeed,
+                    f.textureSamplingCoordinates.x,
+                    f.textureSamplingCoordinates.y),
             };
         }
 

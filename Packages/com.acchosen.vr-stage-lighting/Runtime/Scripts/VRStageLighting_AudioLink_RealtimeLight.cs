@@ -48,12 +48,19 @@ namespace VRSL
         [Tooltip("Source for the light color.\n"
                + "Emission: fixed color below.\n"
                + "ThemeColor0–3: AudioLink theme palette.\n"
-               + "ColorChord: AudioLink color chord representative pixel.")]
+               + "ColorChord: AudioLink color chord representative pixel.\n"
+               + "ColorTexture: sample _AudioTexture at the UV coordinates below.")]
         public ALRealtimeColorMode colorMode = ALRealtimeColorMode.Emission;
 
         [ColorUsage(false, true)]
         [Tooltip("Fixed emission color used when Color Mode is set to Emission.")]
         public Color emissionColor = Color.white;
+
+        [Tooltip("UV coordinates within _AudioTexture to sample when Color Mode is set to "
+               + "ColorTexture. Useful for picking specific audio reactivity regions of "
+               + "AudioLink's atlas (e.g., a particular theme color region or a custom "
+               + "AudioLink Shader Range). Range [0,1] in both axes.")]
+        public Vector2 textureSamplingCoordinates = new Vector2(0f, 0.5f);
 
         // ── Light ─────────────────────────────────────────────────────────────
         [Tooltip("Peak light intensity (lux) at AudioLink full amplitude (1.0). Tune per scene scale.")]
@@ -79,6 +86,11 @@ namespace VRSL
         [Range(0f, 1f)]
         [Tooltip("User-side intensity cap, equivalent to Final Intensity on shader fixtures.")]
         public float finalIntensity = 1f;
+
+        [Range(0f, 1f)]
+        [Tooltip("Global intensity scalar applied on top of Final Intensity. Useful for "
+               + "scene-wide dimming without adjusting every fixture individually.")]
+        public float globalIntensity = 1f;
 
         // ── Pan / Tilt ────────────────────────────────────────────────────────
         [Tooltip("Enable per-frame world transform read for moving-head direction. "
@@ -118,10 +130,12 @@ namespace VRSL
             if (_shellProps == null) _shellProps = new MaterialPropertyBlock();
 
             // Map colorMode to the AudioLink Static body shader's sampling flags
-            // (ThemeColorSampling / ColorChord / Emission are mutually exclusive).
-            int themeColorTarget = 0;
-            int enableThemeColor = 0;
-            int enableColorChord = 0;
+            // (ThemeColorSampling / ColorChord / ColorTexture / Emission are
+            // mutually exclusive).
+            int themeColorTarget    = 0;
+            int enableThemeColor    = 0;
+            int enableColorChord    = 0;
+            int enableTextureSample = 0;
             if (colorMode >= ALRealtimeColorMode.ThemeColor0
                 && colorMode <= ALRealtimeColorMode.ThemeColor3)
             {
@@ -132,22 +146,28 @@ namespace VRSL
             {
                 enableColorChord = 1;
             }
+            else if (colorMode == ALRealtimeColorMode.ColorTexture)
+            {
+                enableTextureSample = 1;
+            }
 
             _shellProps.SetFloat("_EnableAudioLink",          enableAudioLink ? 1f : 0f);
             _shellProps.SetFloat("_Band",                     (float)(int)band);
             _shellProps.SetFloat("_Delay",                    delay);
             _shellProps.SetFloat("_BandMultiplier",           bandMultiplier);
             _shellProps.SetColor("_Emission",                 emissionColor);
-            _shellProps.SetFloat("_GlobalIntensity",          1f);
+            _shellProps.SetFloat("_GlobalIntensity",          globalIntensity);
             _shellProps.SetFloat("_FinalIntensity",           finalIntensity);
             _shellProps.SetFloat("_SpinSpeed",                goboSpinSpeed);
             _shellProps.SetInt(  "_EnableSpin",               goboSpinSpeed != 0f ? 1 : 0);
             _shellProps.SetInt(  "_ProjectionSelection",      goboIndex);
-            _shellProps.SetInt(  "_EnableColorTextureSample", 0);
+            _shellProps.SetInt(  "_EnableColorTextureSample", enableTextureSample);
             _shellProps.SetInt(  "_UseTraditionalSampling",   0);
             _shellProps.SetInt(  "_EnableThemeColorSampling", enableThemeColor);
             _shellProps.SetInt(  "_ThemeColorTarget",         themeColorTarget);
             _shellProps.SetInt(  "_EnableColorChord",         enableColorChord);
+            _shellProps.SetFloat("_TextureColorSampleX",      textureSamplingCoordinates.x);
+            _shellProps.SetFloat("_TextureColorSampleY",      textureSamplingCoordinates.y);
 
             for (int i = 0; i < fixtureShellRenderers.Length; i++)
             {
@@ -179,11 +199,12 @@ namespace VRSL
     /// <summary>Color source for <see cref="VRStageLighting_AudioLink_RealtimeLight"/>.</summary>
     public enum ALRealtimeColorMode
     {
-        Emission     = 0,
-        ThemeColor0  = 1,
-        ThemeColor1  = 2,
-        ThemeColor2  = 3,
-        ThemeColor3  = 4,
-        ColorChord   = 5,
+        Emission      = 0,
+        ThemeColor0   = 1,
+        ThemeColor1   = 2,
+        ThemeColor2   = 3,
+        ThemeColor3   = 4,
+        ColorChord    = 5,
+        ColorTexture  = 6,
     }
 }

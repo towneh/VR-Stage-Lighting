@@ -54,6 +54,11 @@ namespace VRSL
         [Tooltip("User-side intensity cap, equivalent to Final Intensity on shader fixtures.")]
         public float finalIntensity = 1f;
 
+        [Range(0f, 1f)]
+        [Tooltip("Global intensity scalar applied on top of Final Intensity. Useful for "
+               + "scene-wide dimming without adjusting every fixture individually.")]
+        public float globalIntensity = 1f;
+
         [Tooltip("Allow DMX strobe channel to gate this light on/off.")]
         public bool enableStrobe = true;
 
@@ -184,7 +189,7 @@ namespace VRSL
             _shellProps.SetFloat("_FixtureBaseRotationY",panOffset);
             _shellProps.SetColor("_Emission",            shellEmissionTint);
             _shellProps.SetColor("_EmissionDMX",         shellEmissionTint);
-            _shellProps.SetFloat("_GlobalIntensity",     1f);
+            _shellProps.SetFloat("_GlobalIntensity",     globalIntensity);
             _shellProps.SetFloat("_FinalIntensity",      finalIntensity);
             _shellProps.SetFloat("_MaxMinPanAngle",      maxMinPan  / 2f);
             _shellProps.SetFloat("_MaxMinTiltAngle",     maxMinTilt / 2f);

@@ -277,7 +277,10 @@ namespace VRSL
                 rightAndMaxIntensity = new Vector4(baseRight.x, baseRight.y, baseRight.z, f.maxIntensity),
                 // spotAngles.y = max outer half-angle, spotAngles.w = min outer half-angle.
                 // The compute shader lerps between w and y based on DMX ch+4.
-                spotAngles        = new Vector4(innerHalf, outerHalf, f.finalIntensity, minOuterHalf),
+                // spotAngles.z carries the combined finalIntensity × globalIntensity scalar.
+                // Folded CPU-side so the compute shader stays oblivious to the split.
+                spotAngles        = new Vector4(innerHalf, outerHalf,
+                                                f.finalIntensity * f.globalIntensity, minOuterHalf),
                 dmxChannel        = new Vector4(
                     f.ComputeAbsoluteChannel(),
                     f.enableStrobe       ? 1f : 0f,

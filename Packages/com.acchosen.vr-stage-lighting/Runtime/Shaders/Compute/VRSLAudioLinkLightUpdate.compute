@@ -38,16 +38,27 @@ float3 RotateAroundAxis(float3 v, float3 axis, float angleDeg)
     return v * c + cross(axis, v) * s + axis * dot(axis, v) * (1.0 - c);
 }
 
+// AudioLink texture dimensions — used to convert [0,1] UV sampling coords to
+// integer pixel coords for Load(). AudioLink's _AudioTexture is currently
+// 128×64 across all known versions; this matches what the legacy AudioLink
+// fixture mesh shader assumes.
+#define AL_TEXTURE_WIDTH  128
+#define AL_TEXTURE_HEIGHT 64
+
 // Sample a color from the AudioLink texture based on colorMode:
 //   0 = emission (handled by caller)
 //   1–4 = AudioLink theme colors 0–3 (row 23)
 //   5 = Color Chord representative pixel (row 25, x=0)
-float3 SampleAudioLinkColor(int colorMode)
+//   6 = ColorTexture: arbitrary pixel sample at sampleUV (clamped [0,1])
+float3 SampleAudioLinkColor(int colorMode, float2 sampleUV)
 {
     if (colorMode >= 1 && colorMode <= 4)
         return _AudioTexture.Load(int3(colorMode - 1, AL_THEME_ROW, 0)).rgb;
-    // colorMode == 5 — Color Chord
-    return _AudioTexture.Load(int3(0, AL_CCLIGHTS_ROW, 0)).rgb;
+    if (colorMode == 5)
+        return _AudioTexture.Load(int3(0, AL_CCLIGHTS_ROW, 0)).rgb;
+    // colorMode == 6 — ColorTexture: convert UV to integer pixel coords.
+    int2 px = int2(saturate(sampleUV) * float2(AL_TEXTURE_WIDTH - 1, AL_TEXTURE_HEIGHT - 1));
+    return _AudioTexture.Load(int3(px, 0)).rgb;
 }
 
 // ── Kernel: one thread per fixture ───────────────────────────────────────────
@@ -82,9 +93,11 @@ void UpdateLights(uint3 id : SV_DispatchThreadID)
     }
 
     // ── Color ─────────────────────────────────────────────────────────────────
+    // reserved.zw = textureSamplingCoordinates (only meaningful when colorMode == 6).
+    float2 sampleUV = cfg.reserved.zw;
     float3 color = (colorMode == 0)
         ? cfg.emissionColor.rgb
-        : SampleAudioLinkColor(colorMode);
+        : SampleAudioLinkColor(colorMode, sampleUV);
 
     float combinedIntensity = amplitude * maxIntensity * finalIntensity;
 
