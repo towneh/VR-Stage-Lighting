@@ -1,6 +1,6 @@
 # VRSL URP Volumetric Lights — Design Document
 
-> **Status:** Active implementation on the `urp-volumetric-lights` branch. The DMX raymarched volumetric pass has landed (clean uniform density, multi-light, screen-space depth occlusion, half-res with bilateral upsample) and is gated by a manager-side toggle. Modulated noise density, AudioLink port, wash mover tuning, fixture-shell driving, and new GPU prefab variants are pending — see *Phasing* for the ordered list. The companion document `URP-Realtime-Lights.md` describes the surface-illumination pipeline this work builds on.
+> **Status:** Active implementation on the `urp-volumetric-lights` branch. The DMX raymarched volumetric pass has landed (clean uniform density, multi-light, screen-space depth occlusion, half-res with bilateral upsample) and is gated by a manager-side toggle. The AudioLink path was ported alongside the DMX work and shares the same shader. Modulated noise density, wash mover tuning, fixture-shell driving, and new GPU prefab variants are pending — see *Phasing* for the ordered list. The companion document `URP-Realtime-Lights.md` describes the surface-illumination pipeline this work builds on.
 
 ---
 
@@ -200,9 +200,9 @@ This is a **clearer split between platforms**, not a consolidation. The Static c
 The work is sequenced so each step produces something visually evaluable before the next is committed.
 
 1. ✅ **Compute infrastructure + multi-light raymarch (DMX)** — volumetric pass added to `VRSLRealtimeLightFeature`, half-res RT and half-res min-depth allocated as transient render-graph resources, three sub-passes (depth downsample → raymarch → bilateral upsample) record from one `VolumetricPass.RecordRenderGraph`. Reads `_VRSLLights` directly; gobo sampling reuses `SampleGobo()` (lifted into `VRSLLightingLibrary.hlsl` as a shared definition for both surface and volumetric). Density is uniform, manager-driven. *Decision gate:* visual evaluation on the DMX example scene.
-2. **Modulated density variant** — second `multi_compile` keyword, 3D noise sampling at each ray step, manager toggle exposed.
-3. **DMX wash mover** — same shader, density/falloff tuning for the wider cone.
-4. **AudioLink port** — `VRSLAudioLinkRealtimeLightFeature` gets the same volumetric pass; `VRSLAudioLinkLightUpdate.compute` already produces compatible `VRSLLightData`, so the shader-side change is zero. AudioLink wash follows.
+2. ✅ **AudioLink port** — `VRSLAudioLinkRealtimeLightFeature` gains the same volumetric sub-pass structure, reading the `_VRSLLights` buffer that `VRSLAudioLinkLightUpdate.compute` already produces. Shader is reused unchanged. `VRSL_AudioLinkGPULightManager` mirrors the DMX manager's volumetric inspector fields. Brought forward of the original phasing because DMX-via-OSC was blocked on a separate scene-level Render Graph bug; AudioLink runs from the audio source and unblocks visual evaluation immediately.
+3. **Modulated density variant** — second `multi_compile` keyword, 3D noise sampling at each ray step, manager toggle exposed.
+4. **DMX wash + AudioLink wash mover tuning** — density/falloff tuning for the wider cone shape on both paths.
 5. **Fixture-shell driving on Realtime components** — adds `fixtureShellRenderers` field and the property-block push, so a GPU prefab works without a Static sibling.
 6. **GPU prefab variants** — new prefabs with no volumetric mesh, no Static, no projection disc. Old prefabs unchanged. Update the Editor setup utility to optionally generate the new variant.
 7. **CHANGELOG + setup-guide section** in this document, describing the final-state pipeline.
