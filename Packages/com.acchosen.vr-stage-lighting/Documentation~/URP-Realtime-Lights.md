@@ -458,6 +458,8 @@ The GPU scripts live in `Runtime/Scripts/GPU/` under `VRSL.GPU.asmdef`, separate
 
 ## Setup Guide (Unity 6 URP)
 
+> **Quick setup:** run **VRSL → Setup URP GPU Realtime Lights (DMX)** from the menu bar. The utility applies every step below in one click — sets Forward+, disables Depth Priming, enables the depth texture, adds `VRSLRealtimeLightFeature` to the active URP renderer, drops a `VRSL_GPULightManager` into the active scene, and auto-assigns the compute, lighting, and volumetric shader references. Idempotent — safe to re-run. Steps below describe what the utility does and remain the manual fallback.
+
 ### URP Renderer Asset
 
 1. Set **Rendering Path** to **Forward+** on the URP asset.
