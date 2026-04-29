@@ -24,6 +24,15 @@ namespace VRSL
     public class VRStageLighting_DMX_RealtimeLight : MonoBehaviour
     {
         // ──────────────────────────────────────────────────────────────────────────
+        // Fixture type — drives inspector field visibility
+        // ──────────────────────────────────────────────────────────────────────────
+        [Tooltip("Selects the fixture archetype this component represents. Drives "
+               + "which inspector sections are shown — movers expose pan/tilt, "
+               + "spotlights expose gobo selection, statics hide both. Pick Custom "
+               + "to keep every section visible regardless of preset.")]
+        public DMXFixtureType fixtureType = DMXFixtureType.MoverSpotlight;
+
+        // ──────────────────────────────────────────────────────────────────────────
         // DMX Addressing — mirrors VRStageLighting_DMX_Static field names/defaults
         // ──────────────────────────────────────────────────────────────────────────
         [Tooltip("Enables DMX control for this fixture.")]
@@ -210,5 +219,18 @@ namespace VRSL
                 return Mathf.Abs(sector * 13 + 1);
             return Mathf.Abs(dmxChannel + (dmxUniverse - 1) * 512 + (dmxUniverse - 1) * 8);
         }
+    }
+
+    /// <summary>Fixture archetype for <see cref="VRStageLighting_DMX_RealtimeLight"/>.
+    /// Drives inspector field visibility — movers expose pan/tilt, spotlights expose
+    /// gobo selection, static fixtures hide both. Custom keeps every section visible
+    /// for authoring novel fixtures that don't fit the four built-in shapes.</summary>
+    public enum DMXFixtureType
+    {
+        MoverSpotlight = 0,
+        MoverWashlight = 1,
+        StaticBlinder  = 2,
+        StaticParLight = 3,
+        Custom         = 4,
     }
 }

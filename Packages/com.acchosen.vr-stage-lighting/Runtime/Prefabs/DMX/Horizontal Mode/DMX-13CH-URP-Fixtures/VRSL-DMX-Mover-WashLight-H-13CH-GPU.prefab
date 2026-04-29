@@ -46,6 +46,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e115d9fc57135a34c89ef9033154b886, type: 3}
   m_Name: 
   m_EditorClassIdentifier: VRSL.Core::VRSL.VRStageLighting_DMX_RealtimeLight
+  fixtureType: 1
   enableDMXChannels: 1
   enableFineChannels: 0
   useLegacySectorMode: 0

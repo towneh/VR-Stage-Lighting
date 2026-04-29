@@ -10,6 +10,9 @@ namespace VRSL
     {
         GUIStyle _sectionLabel;
 
+        // Fixture Type
+        SerializedProperty _fixtureType;
+
         // DMX Settings
         SerializedProperty _enableDMXChannels;
         SerializedProperty _enableFineChannels;
@@ -64,6 +67,8 @@ namespace VRSL
         {
             _sectionLabel = MakeSectionLabel();
 
+            _fixtureType         = serializedObject.FindProperty("fixtureType");
+
             _enableDMXChannels   = serializedObject.FindProperty("enableDMXChannels");
             _enableFineChannels  = serializedObject.FindProperty("enableFineChannels");
             _useLegacySectorMode = serializedObject.FindProperty("useLegacySectorMode");
@@ -104,6 +109,21 @@ namespace VRSL
 
             VRSL_EditorHeader.Draw();
 
+            // ── Fixture Type ──────────────────────────────────────────────────
+            // Top-level archetype dropdown — drives section visibility below.
+            GUILayout.Label("Fixture Type", _sectionLabel);
+            EditorGUILayout.PropertyField(_fixtureType, new GUIContent("Type", _fixtureType.tooltip));
+
+            var type = (DMXFixtureType)_fixtureType.enumValueIndex;
+            bool isMover     = type == DMXFixtureType.MoverSpotlight
+                            || type == DMXFixtureType.MoverWashlight;
+            bool showMovement = isMover || type == DMXFixtureType.Custom;
+            bool showGobo     = type == DMXFixtureType.MoverSpotlight
+                             || type == DMXFixtureType.Custom;
+
+            EditorGUILayout.Space();
+            EditorGUILayout.Space();
+
             // ── DMX Settings ──────────────────────────────────────────────────
             GUILayout.Label("DMX Settings", _sectionLabel);
             EditorGUILayout.PropertyField(_enableDMXChannels);
@@ -137,30 +157,48 @@ namespace VRSL
             EditorGUILayout.Space();
 
             // ── Movement Settings ─────────────────────────────────────────────
-            GUILayout.Label("Movement Settings", _sectionLabel);
-            EditorGUILayout.PropertyField(_enablePanTilt);
-            EditorGUILayout.PropertyField(_invertPan);
-            EditorGUILayout.PropertyField(_invertTilt);
-            EditorGUILayout.PropertyField(
-                _maxMinPan,
-                new GUIContent("Min/Max Pan Range", _maxMinPan.tooltip));
-            EditorGUILayout.PropertyField(
-                _maxMinTilt,
-                new GUIContent("Min/Max Tilt Range", _maxMinTilt.tooltip));
-            EditorGUILayout.PropertyField(_panOffset);
-            EditorGUILayout.PropertyField(_tiltOffset);
+            // Movers (Spotlight, Washlight) and Custom show pan/tilt range and
+            // inversion. Static fixtures hide this section since they don't pan/tilt.
+            if (showMovement)
+            {
+                GUILayout.Label("Movement Settings", _sectionLabel);
+                EditorGUILayout.PropertyField(_enablePanTilt);
+                EditorGUILayout.PropertyField(_invertPan);
+                EditorGUILayout.PropertyField(_invertTilt);
+                EditorGUILayout.PropertyField(
+                    _maxMinPan,
+                    new GUIContent("Min/Max Pan Range", _maxMinPan.tooltip));
+                EditorGUILayout.PropertyField(
+                    _maxMinTilt,
+                    new GUIContent("Min/Max Tilt Range", _maxMinTilt.tooltip));
+                EditorGUILayout.PropertyField(_panOffset);
+                EditorGUILayout.PropertyField(_tiltOffset);
 
-            EditorGUILayout.Space();
-            EditorGUILayout.Space();
+                EditorGUILayout.Space();
+                EditorGUILayout.Space();
+            }
 
             // ── Fixture Settings ──────────────────────────────────────────────
+            // Strobe is universal (all fixture types support it). Gobo is split
+            // into its own conditional section below for spotlight-only display.
             GUILayout.Label("Fixture Settings", _sectionLabel);
             EditorGUILayout.PropertyField(_enableStrobe);
-            EditorGUILayout.PropertyField(_enableGobo);
-            EditorGUILayout.PropertyField(_enableGoboSpin);
 
             EditorGUILayout.Space();
             EditorGUILayout.Space();
+
+            // ── Gobo Settings ─────────────────────────────────────────────────
+            // Spotlights and Custom show gobo selection. Washlights, Blinders,
+            // and ParLights don't have gobos in the underlying optics — hide.
+            if (showGobo)
+            {
+                GUILayout.Label("Gobo Settings", _sectionLabel);
+                EditorGUILayout.PropertyField(_enableGobo);
+                EditorGUILayout.PropertyField(_enableGoboSpin);
+
+                EditorGUILayout.Space();
+                EditorGUILayout.Space();
+            }
 
             // ── Light Output Axis ─────────────────────────────────────────────
             GUILayout.Label("Light Output Axis", _sectionLabel);
