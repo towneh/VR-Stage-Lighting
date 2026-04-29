@@ -190,7 +190,8 @@ struct VRSLALFixtureConfig
                               // z = unused, w = unused
     float4 alParams;          // x = band (0–3), y = delay (0–127), z = bandMultiplier,
                               // w = colorMode (0=emission, 1–4=theme0–3, 5=colorChord,
-                              //                6=colorTexture)
+                              //                6=colorTexture (HSV-normalised),
+                              //                7=colorTextureTraditional (raw))
     float4 emissionColor;     // xyz = linear RGB (used when colorMode == 0), w = unused
     float4 reserved;          // x = gobo slot index (-1 = no gobo, 0+ = slice in _VRSLGobos),
                               // y = gobo spin speed (bipolar: 0 = no spin, negative = CCW, positive = CW),

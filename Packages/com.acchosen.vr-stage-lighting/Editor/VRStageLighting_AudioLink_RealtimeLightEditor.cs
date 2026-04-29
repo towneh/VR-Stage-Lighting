@@ -106,7 +106,8 @@ namespace VRSL
             var mode = (ALRealtimeColorMode)_colorMode.enumValueIndex;
             if (mode == ALRealtimeColorMode.Emission)
                 EditorGUILayout.PropertyField(_emissionColor);
-            else if (mode == ALRealtimeColorMode.ColorTexture)
+            else if (mode == ALRealtimeColorMode.ColorTexture
+                  || mode == ALRealtimeColorMode.ColorTextureTraditional)
                 EditorGUILayout.PropertyField(_textureSamplingCoordinates);
 
             EditorGUILayout.PropertyField(_isPointLight);
