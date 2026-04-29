@@ -99,7 +99,6 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 782598903797530437}
-  - component: {fileID: 7082451107174096172}
   - component: {fileID: 456896895597720278}
   m_Layer: 24
   m_Name: VRSL-AudioLink-Static-Blinder-GPU
@@ -125,47 +124,6 @@ Transform:
   - {fileID: 2615128626958176564}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: -45.000004, y: 0, z: 0}
---- !u!114 &7082451107174096172
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 3415532485171196084}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 2db36852c028d65459009d356c564dc4, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  enableAudioLink: 0
-  band: 0
-  delay: 0
-  bandMultiplier: 15
-  enableColorChord: 0
-  globalIntensity: 1
-  finalIntensity: 1
-  finalIntensityComponentMode: 0
-  finalIntensityVolumetric: 1
-  finalIntensityProjection: 1
-  finalIntensityFixture: 1
-  lightColorTint: {r: 2, g: 2, b: 2, a: 2}
-  enableColorTextureSampling: 0
-  traditionalColorTextureSampling: 0
-  textureSamplingCoordinates: {x: 0.5, y: 0.5}
-  enableThemeColorSampling: 0
-  themeColorTarget: 1
-  targetToFollow: {fileID: 0}
-  spinSpeed: 4
-  enableAutoSpin: 0
-  selectGOBO: 1
-  objRenderers:
-  - {fileID: 7947112119382405}
-  - {fileID: 7140359721764081586}
-  coneWidth: 2.5
-  coneLength: 8.5
-  maxConeLength: 8.5
-  targetConstraint: {fileID: 0}
-  foldout: 0
 --- !u!114 &456896895597720278
 MonoBehaviour:
   m_ObjectHideFlags: 0

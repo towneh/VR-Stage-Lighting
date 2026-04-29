@@ -99,7 +99,6 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 6069148926831620605}
-  - component: {fileID: 93102146940174867}
   - component: {fileID: 6270733567312740336}
   m_Layer: 0
   m_Name: VRSL-DMX-Mover-Spotlight-H-13CH-GPU
@@ -122,58 +121,9 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 5828541851095695052}
-  - {fileID: 1593469979529219196}
   - {fileID: 2242509758995496211}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 90, y: 0, z: 0}
---- !u!114 &93102146940174867
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 3951053617767928886}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 53041de46e0113848b91b1a94be742e1, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  enableDMXChannels: 1
-  enableFineChannels: 0
-  fixtureID: 0
-  dmxChannel: 1
-  dmxUniverse: 1
-  nineUniverseMode: 0
-  useLegacySectorMode: 0
-  singleChannelMode: 0
-  sector: 0
-  Channel: 0
-  legacyGoboRange: 0
-  globalIntensity: 1
-  finalIntensity: 1
-  finalIntensityComponentMode: 0
-  finalIntensityVolumetric: 1
-  finalIntensityProjection: 1
-  finalIntensityFixture: 1
-  lightColorTint: {r: 2, g: 2, b: 2, a: 2}
-  invertPan: 0
-  invertTilt: 1
-  isUpsideDown: 0
-  enableAutoSpin: 1
-  enableStrobe: 1
-  tiltOffsetBlue: 90
-  panOffsetBlueGreen: 0
-  selectGOBO: 1
-  objRenderers:
-  - {fileID: 1748021419247717858}
-  - {fileID: 6231066342158639628}
-  coneWidth: 2.5
-  coneLength: 8.5
-  maxConeLength: 1
-  maxMinPan: 180
-  maxMinTilt: -180
-  fixtureDefintion: 0
-  foldout: 0
 --- !u!114 &6270733567312740336
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -188,12 +138,13 @@ MonoBehaviour:
   m_EditorClassIdentifier: VRSL.Core::VRSL.VRStageLighting_DMX_RealtimeLight
   enableDMXChannels: 1
   enableFineChannels: 0
-  dmxChannel: 1
-  dmxUniverse: 1
   useLegacySectorMode: 0
   sector: 0
+  dmxChannel: 1
+  dmxUniverse: 1
   maxIntensity: 10
   finalIntensity: 1
+  globalIntensity: 1
   enableStrobe: 1
   enableConeWidth: 1
   minSpotAngle: 5
@@ -210,6 +161,9 @@ MonoBehaviour:
   panOffset: 0
   tiltOffset: 90
   localLightDirection: {x: 0, y: 0, z: 1}
+  fixtureShellRenderers:
+  - {fileID: 1748021419247717858}
+  shellEmissionTint: {r: 1, g: 1, b: 1, a: 1}
 --- !u!1 &5824111069407649994
 GameObject:
   m_ObjectHideFlags: 0
@@ -241,93 +195,3 @@ Transform:
   m_Children: []
   m_Father: {fileID: 6069148926831620605}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1 &8277788807673633954
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1593469979529219196}
-  - component: {fileID: 894112080326502736}
-  - component: {fileID: 6231066342158639628}
-  m_Layer: 0
-  m_Name: MoverLightMesh-VolumetricPassMesh
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &1593469979529219196
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 8277788807673633954}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: -0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 6069148926831620605}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!33 &894112080326502736
-MeshFilter:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 8277788807673633954}
-  m_Mesh: {fileID: 3095268764473335706, guid: cc98423c9d250574a97ff77da8b48ae0, type: 3}
---- !u!23 &6231066342158639628
-MeshRenderer:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 8277788807673633954}
-  m_Enabled: 1
-  m_CastShadows: 0
-  m_ReceiveShadows: 1
-  m_DynamicOccludee: 1
-  m_StaticShadowCaster: 0
-  m_MotionVectors: 1
-  m_LightProbeUsage: 0
-  m_ReflectionProbeUsage: 1
-  m_RayTracingMode: 2
-  m_RayTraceProcedural: 0
-  m_RayTracingAccelStructBuildFlagsOverride: 0
-  m_RayTracingAccelStructBuildFlags: 1
-  m_SmallMeshCulling: 1
-  m_ForceMeshLod: -1
-  m_MeshLodSelectionBias: 0
-  m_RenderingLayerMask: 1
-  m_RendererPriority: 0
-  m_Materials:
-  - {fileID: 2100000, guid: d0cf9b04d850d924999a26c7184e0d26, type: 2}
-  m_StaticBatchInfo:
-    firstSubMesh: 0
-    subMeshCount: 0
-  m_StaticBatchRoot: {fileID: 0}
-  m_ProbeAnchor: {fileID: 0}
-  m_LightProbeVolumeOverride: {fileID: 0}
-  m_ScaleInLightmap: 1
-  m_ReceiveGI: 1
-  m_PreserveUVs: 0
-  m_IgnoreNormalsForChartDetection: 0
-  m_ImportantGI: 0
-  m_StitchLightmapSeams: 0
-  m_SelectedEditorRenderState: 3
-  m_MinimumChartSize: 4
-  m_AutoUVMaxDistance: 0.5
-  m_AutoUVMaxAngle: 89
-  m_LightmapParameters: {fileID: 0}
-  m_GlobalIlluminationMeshLod: 0
-  m_SortingLayerID: 0
-  m_SortingLayer: 0
-  m_SortingOrder: 0
-  m_MaskInteraction: 0
-  m_AdditionalVertexStreams: {fileID: 0}

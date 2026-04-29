@@ -9,7 +9,6 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 4578369483360533202}
-  - component: {fileID: 6490465341301011273}
   - component: {fileID: 8455022925270504735}
   m_Layer: 24
   m_Name: VRSL-AudioLink-Static-ParLight-GPU
@@ -34,46 +33,6 @@ Transform:
   - {fileID: 4296290162261019124}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 190, y: 0, z: 0}
---- !u!114 &6490465341301011273
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4191263726563628883}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 2db36852c028d65459009d356c564dc4, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  enableAudioLink: 1
-  band: 0
-  delay: 0
-  bandMultiplier: 1
-  enableColorChord: 0
-  globalIntensity: 1
-  finalIntensity: 1
-  finalIntensityComponentMode: 0
-  finalIntensityVolumetric: 1
-  finalIntensityProjection: 1
-  finalIntensityFixture: 1
-  lightColorTint: {r: 2, g: 2, b: 2, a: 2}
-  enableColorTextureSampling: 0
-  traditionalColorTextureSampling: 0
-  textureSamplingCoordinates: {x: 0.5, y: 0.5}
-  enableThemeColorSampling: 0
-  themeColorTarget: 1
-  targetToFollow: {fileID: 0}
-  spinSpeed: 4
-  enableAutoSpin: 0
-  selectGOBO: 1
-  objRenderers:
-  - {fileID: 2021160172022021483}
-  coneWidth: 2.5
-  coneLength: 8.5
-  maxConeLength: 8.5
-  targetConstraint: {fileID: 0}
-  foldout: 0
 --- !u!114 &8455022925270504735
 MonoBehaviour:
   m_ObjectHideFlags: 0

@@ -46,6 +46,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   computeShader: {fileID: 7200000, guid: ca42f410985d87d4c8a96afe809e2d1b, type: 3}
   lightingShader: {fileID: 4800000, guid: 656174862cac56e48afb69357cccdde6, type: 3}
+  volumetricShader: {fileID: 4800000, guid: d403be220ced31e4a8a0214c959541ed, type: 3}
+  volumetricStepCount: 32
+  volumetricDensity: 0.1
+  volumetricAnisotropy: 0.2
+  volumetricTint: {r: 1, g: 1, b: 1, a: 1}
+  volumetricIntensity: 1
   goboTextures:
   - {fileID: 2800000, guid: b01ba09b4a2acd34391cdd96cbf82837, type: 3}
   - {fileID: 2800000, guid: f88fbf872df7f684b81df2ea631a8795, type: 3}

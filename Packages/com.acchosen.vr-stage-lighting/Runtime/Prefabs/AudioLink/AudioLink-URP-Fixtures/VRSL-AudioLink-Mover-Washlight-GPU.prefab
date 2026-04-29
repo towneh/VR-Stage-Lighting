@@ -450,7 +450,6 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 241753788679286647}
-  - component: {fileID: 8886145873152591982}
   - component: {fileID: 7714854072841162277}
   m_Layer: 0
   m_Name: VRSL-AudioLink-Mover-Washlight-GPU
@@ -476,49 +475,6 @@ Transform:
   - {fileID: 7042515004215238741}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: -180.00002, z: 180.00002}
---- !u!114 &8886145873152591982
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 8558686515597726911}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 2db36852c028d65459009d356c564dc4, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  enableAudioLink: 1
-  band: 0
-  delay: 0
-  bandMultiplier: 2.5
-  enableColorChord: 0
-  globalIntensity: 1
-  finalIntensity: 1
-  finalIntensityComponentMode: 0
-  finalIntensityVolumetric: 1
-  finalIntensityProjection: 1
-  finalIntensityFixture: 1
-  lightColorTint: {r: 2, g: 2, b: 2, a: 1}
-  enableColorTextureSampling: 0
-  traditionalColorTextureSampling: 0
-  textureSamplingCoordinates: {x: 0.5, y: 0.5}
-  enableThemeColorSampling: 0
-  themeColorTarget: 1
-  targetToFollow: {fileID: 135458512408145752}
-  spinSpeed: -4
-  enableAutoSpin: 0
-  selectGOBO: 1
-  objRenderers:
-  - {fileID: 5049054614621143540}
-  - {fileID: 3380086788645938475}
-  - {fileID: 1719549566932065213}
-  - {fileID: 6512499448169969690}
-  coneWidth: 2.7
-  coneLength: 6.71
-  maxConeLength: 1
-  targetConstraint: {fileID: 7850971637571091595}
-  foldout: 0
 --- !u!114 &7714854072841162277
 MonoBehaviour:
   m_ObjectHideFlags: 0

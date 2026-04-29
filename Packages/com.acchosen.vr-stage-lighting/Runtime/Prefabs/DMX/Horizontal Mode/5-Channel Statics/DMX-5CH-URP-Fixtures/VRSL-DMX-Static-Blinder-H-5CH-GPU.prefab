@@ -189,7 +189,6 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 340408058367184823}
-  - component: {fileID: 4054721398585354532}
   - component: {fileID: 6906111197630105201}
   m_Layer: 0
   m_Name: VRSL-DMX-Static-Blinder-H-5CH-GPU
@@ -215,54 +214,6 @@ Transform:
   - {fileID: 5705541520389984159}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: -45.000004, y: 90.00001, z: 0}
---- !u!114 &4054721398585354532
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 6230570543023569670}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 53041de46e0113848b91b1a94be742e1, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  enableDMXChannels: 1
-  enableFineChannels: 0
-  fixtureID: 0
-  dmxChannel: 1
-  dmxUniverse: 1
-  nineUniverseMode: 0
-  useLegacySectorMode: 0
-  singleChannelMode: 0
-  sector: 13
-  Channel: 0
-  legacyGoboRange: 0
-  globalIntensity: 1
-  finalIntensity: 1
-  finalIntensityComponentMode: 0
-  finalIntensityVolumetric: 1
-  finalIntensityProjection: 1
-  finalIntensityFixture: 1
-  lightColorTint: {r: 2, g: 2, b: 2, a: 2}
-  invertPan: 0
-  invertTilt: 0
-  isUpsideDown: 0
-  enableAutoSpin: 0
-  enableStrobe: 1
-  tiltOffsetBlue: 90
-  panOffsetBlueGreen: 0
-  selectGOBO: 1
-  objRenderers:
-  - {fileID: 227367878400409762}
-  - {fileID: 7186078127535477412}
-  coneWidth: 2.5
-  coneLength: 8.5
-  maxConeLength: 1
-  maxMinPan: 180
-  maxMinTilt: -180
-  fixtureDefintion: 6
-  foldout: 0
 --- !u!114 &6906111197630105201
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -277,10 +228,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: VRSL.Core::VRSL.VRStageLighting_DMX_RealtimeLight
   enableDMXChannels: 1
   enableFineChannels: 0
-  dmxChannel: 1
-  dmxUniverse: 1
   useLegacySectorMode: 0
   sector: 0
+  dmxChannel: 1
+  dmxUniverse: 1
   maxIntensity: 10
   finalIntensity: 1
   enableStrobe: 1
