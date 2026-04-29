@@ -33,12 +33,10 @@ namespace VRSL
         public Shader lightingShader;
 
         [Header("Volumetric")]
-        [Tooltip("Enable raymarched in-scattering as a third pass after the surface lighting "
-               + "pass. Produces a real beam-in-haze effect from the same _VRSLLights buffer "
-               + "the surface pass uses. Half-res with bilateral upsample.")]
-        public bool volumetricEnabled = false;
-
-        [Tooltip("Assign Hidden/VRSL/VolumetricLighting (the VRSLVolumetricLighting shader asset).")]
+        [Tooltip("Assign Hidden/VRSL/VolumetricLighting (the VRSLVolumetricLighting shader asset). "
+               + "The volumetric raymarch pass runs whenever this is assigned and the renderer "
+               + "feature is active — there is no separate enable toggle since the GPU prefab "
+               + "path has no legacy mesh-cone shader to fall back to.")]
         public Shader volumetricShader;
 
         [Range(8, 64)]
@@ -235,10 +233,7 @@ namespace VRSL
             float innerHalf = outerHalf   * 0.5f;
 
             // Emission color must be in linear space to match the lighting shader's expectation.
-            // Sibling AudioLink_Static (if present) is the authoritative source for AudioLink
-            // reaction params, final intensity, emission color, and gobo spin — see the
-            // GetEffective*() accessors on the realtime light component.
-            Color linearEmission = f.GetEffectiveEmissionColor().linear;
+            Color linearEmission = f.emissionColor.linear;
 
             return new VRSLALFixtureConfig
             {
@@ -247,18 +242,19 @@ namespace VRSL
                 // z = AudioLink active flag: 1 = sample AudioLink amplitude, 0 = static full intensity
                 intensityParams  = new Vector4(
                     f.maxIntensity,
-                    f.GetEffectiveFinalIntensity(),
-                    f.GetEffectiveEnableAudioLink() ? 1f : 0f,
+                    f.finalIntensity,
+                    f.enableAudioLink ? 1f : 0f,
                     0f),
                 spotAngles       = new Vector4(innerHalf, outerHalf, 0f, 0f),
                 alParams         = new Vector4(
-                    (int)f.GetEffectiveBand(),
-                    f.GetEffectiveDelay(),
-                    f.GetEffectiveBandMultiplier(),
+                    (int)f.band,
+                    f.delay,
+                    f.bandMultiplier,
                     (int)f.colorMode),
                 emissionColor    = new Vector4(linearEmission.r, linearEmission.g, linearEmission.b, 0f),
-                // reserved.x = gobo array index (0+ = slot); field is 1-based to match AudioLink Static
-                reserved         = new Vector4(f.GetEffectiveGoboIndex() - 1f, f.GetEffectiveGoboSpinSpeed(), 0f, 0f),
+                // reserved.x = gobo array index (0+ = slot); the inspector field is 1-based to
+                // match the established AudioLink Static convention (1 = open beam).
+                reserved         = new Vector4(f.goboIndex - 1f, f.goboSpinSpeed, 0f, 0f),
             };
         }
 

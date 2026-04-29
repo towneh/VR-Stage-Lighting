@@ -40,12 +40,10 @@ namespace VRSL
         public Shader lightingShader;
 
         [Header("Volumetric")]
-        [Tooltip("Enable raymarched in-scattering as a third pass after the surface lighting "
-               + "pass. Produces a real beam-in-haze effect from the same _VRSLLights buffer "
-               + "the surface pass uses. Half-res with bilateral upsample.")]
-        public bool volumetricEnabled = false;
-
-        [Tooltip("Assign Hidden/VRSL/VolumetricLighting (the VRSLVolumetricLighting shader asset).")]
+        [Tooltip("Assign Hidden/VRSL/VolumetricLighting (the VRSLVolumetricLighting shader asset). "
+               + "The volumetric raymarch pass runs whenever this is assigned and the renderer "
+               + "feature is active — there is no separate enable toggle since the GPU prefab "
+               + "path has no legacy mesh-cone shader to fall back to.")]
         public Shader volumetricShader;
 
         [Range(8, 64)]
@@ -282,21 +280,21 @@ namespace VRSL
                 spotAngles        = new Vector4(innerHalf, outerHalf, f.finalIntensity, minOuterHalf),
                 dmxChannel        = new Vector4(
                     f.ComputeAbsoluteChannel(),
-                    f.enableStrobe                     ? 1f : 0f,
-                    f.enablePanTilt                    ? 1f : 0f,
-                    f.GetEffectiveEnableFineChannels() ? 1f : 0f),
+                    f.enableStrobe       ? 1f : 0f,
+                    f.enablePanTilt      ? 1f : 0f,
+                    f.enableFineChannels ? 1f : 0f),
                 panSettings  = new Vector4(
-                    f.GetEffectiveMaxMinPan(),
-                    f.GetEffectivePanOffset(),
-                    f.GetEffectiveInvertPan()  ? 1f : 0f,
-                    f.enableGoboSpin           ? 1f : 0f),
+                    f.maxMinPan,
+                    f.panOffset,
+                    f.invertPan      ? 1f : 0f,
+                    f.enableGoboSpin ? 1f : 0f),
                 // Subtract 90° from tiltOffset: baseForward for moving heads already points
                 // world -Y (via the 90° X root rotation), so the Rodrigues default is not re-applied.
                 tiltSettings = new Vector4(
-                    f.GetEffectiveMaxMinTilt(),
-                    f.GetEffectiveTiltOffset() - 90f,
-                    f.GetEffectiveInvertTilt() ? 1f : 0f,
-                    f.enableGobo               ? 1f : 0f),
+                    f.maxMinTilt,
+                    f.tiltOffset - 90f,
+                    f.invertTilt ? 1f : 0f,
+                    f.enableGobo ? 1f : 0f),
             };
         }
 

@@ -10,7 +10,10 @@ namespace VRSL
     /// StructuredBuffer once (and again on change), then a compute shader decodes DMX
     /// channel data each frame and a fullscreen additive pass renders the lighting.
     ///
-    /// Uses the same DMX addressing scheme as VRStageLighting_DMX_Static.
+    /// This component is the sole authoring surface on GPU-only fixture prefabs —
+    /// no VRStageLighting_DMX_Static sibling participates. The legacy DMX Static
+    /// component remains the authoring surface for VRChat / mobile / Built-in-RP
+    /// fixture prefabs, which use a different rendering path entirely.
     ///
     /// 13-channel layout (relative to the fixture's base DMX channel):
     ///   +0  Pan coarse       +1  Pan fine        +2  Tilt coarse     +3  Tilt fine
@@ -26,24 +29,19 @@ namespace VRSL
         [Tooltip("Enables DMX control for this fixture.")]
         public bool enableDMXChannels = true;
 
-        [Tooltip("Enable 16-bit fine-channel resolution for pan and tilt. "
-               + "Ignored when a sibling DMX_Static is present — inherited from it.")]
+        [Tooltip("Enable 16-bit fine-channel resolution for pan and tilt.")]
         public bool enableFineChannels = false;
 
-        [Tooltip("Use legacy sector-based addressing instead of industry-standard channels. "
-               + "Ignored when a sibling VRStageLighting_DMX_Static is present — addressing "
-               + "is inherited from it so scene overrides only need to be set in one place.")]
+        [Tooltip("Use legacy sector-based addressing instead of industry-standard channels.")]
         public bool useLegacySectorMode = false;
 
-        [Tooltip("Sector number when using legacy mode. Sector 0 = channels 1-13, Sector 1 = 14-26, etc. "
-               + "Ignored when a sibling DMX_Static is present.")]
+        [Tooltip("Sector number when using legacy mode. Sector 0 = channels 1-13, Sector 1 = 14-26, etc.")]
         public int sector = 0;
 
-        [Tooltip("Industry-standard DMX start channel (1-512 per universe). "
-               + "Ignored when a sibling DMX_Static is present.")]
+        [Tooltip("Industry-standard DMX start channel (1-512 per universe).")]
         public int dmxChannel = 1;
 
-        [Tooltip("Artnet universe (1-based). Ignored when a sibling DMX_Static is present.")]
+        [Tooltip("Artnet universe (1-based).")]
         public int dmxUniverse = 1;
 
         // ──────────────────────────────────────────────────────────────────────────
@@ -90,30 +88,24 @@ namespace VRSL
         [Tooltip("Read pan and tilt channels and apply Rodrigues rotation on the GPU.")]
         public bool enablePanTilt = false;
 
-        [Tooltip("Total pan travel in degrees (±half this value from centre). "
-               + "Ignored when a sibling DMX_Static is present — inherited from its maxMinPan.")]
+        [Tooltip("Total pan travel in degrees (±half this value from centre).")]
         public float maxMinPan = 180f;
 
-        [Tooltip("Total tilt travel in degrees (±half this value from centre). "
-               + "Ignored when a sibling DMX_Static is present — inherited from its maxMinTilt.")]
+        [Tooltip("Total tilt travel in degrees (±half this value from centre).")]
         public float maxMinTilt = 180f;
 
-        [Tooltip("Invert the pan direction. "
-               + "Ignored when a sibling DMX_Static is present — inherited from its invertPan.")]
+        [Tooltip("Invert the pan direction.")]
         public bool invertPan = false;
 
-        [Tooltip("Invert the tilt direction. "
-               + "Ignored when a sibling DMX_Static is present — inherited from its invertTilt.")]
+        [Tooltip("Invert the tilt direction.")]
         public bool invertTilt = false;
 
         [Range(0f, 360f)]
-        [Tooltip("Pan position offset in degrees applied after DMX decoding. "
-               + "Ignored when a sibling DMX_Static is present — inherited from its panOffsetBlueGreen.")]
+        [Tooltip("Pan position offset in degrees applied after DMX decoding.")]
         public float panOffset = 0f;
 
         [Range(0f, 360f)]
-        [Tooltip("Tilt position offset in degrees applied after DMX decoding. "
-               + "Ignored when a sibling DMX_Static is present — inherited from its tiltOffsetBlue.")]
+        [Tooltip("Tilt position offset in degrees applied after DMX decoding.")]
         public float tiltOffset = 90f;
 
         // ──────────────────────────────────────────────────────────────────────────
@@ -126,81 +118,92 @@ namespace VRSL
         public Vector3 localLightDirection = Vector3.forward;
 
         // ──────────────────────────────────────────────────────────────────────────
+        // Fixture shell driving
+        // ──────────────────────────────────────────────────────────────────────────
+        [Tooltip("MeshRenderers on the fixture body that should react to this fixture's "
+               + "DMX state (lit lamp lens, status indicators, etc.). When a sibling "
+               + "VRStageLighting_DMX_Static is present it owns these renderers — leave "
+               + "this list empty in that case. On GPU-only prefabs without a Static "
+               + "sibling, populate with the fixture body's MeshRenderer(s) so the lens "
+               + "still lights up under DMX without the legacy Static component.")]
+        public MeshRenderer[] fixtureShellRenderers;
+
+        [ColorUsage(showAlpha: false)]
+        [Tooltip("Color tint applied to the fixture body's emissive output. Multiplies "
+               + "with the DMX-decoded color. White = no tint.")]
+        public Color shellEmissionTint = Color.white;
+
+        // ──────────────────────────────────────────────────────────────────────────
         int _absChannel;
+        MaterialPropertyBlock _shellProps;
 
         void Awake()
         {
             _absChannel = ComputeAbsoluteChannel();
+            DriveFixtureShells();
         }
 
         void OnValidate()
         {
             _absChannel = ComputeAbsoluteChannel();
+            DriveFixtureShells();
         }
 
-        // Matches RawDMXConversion() / SectorConversion() in VRStageLighting_DMX_Static.
-        // If a sibling DMX_Static is present on this GameObject, its addressing is the
-        // authoritative source — scene instances typically override sector/universe only
-        // on the Static component, so inheriting here keeps both paths in lockstep
-        // without requiring duplicate overrides.
+        // ──────────────────────────────────────────────────────────────────────────
+        // Fixture shell driving — pushes a MaterialPropertyBlock to the body
+        // MeshRenderers so the legacy fixture-mesh shader (which samples DMX
+        // textures globally) sees the right per-instance channel offset.
+        //
+        // Skipped when a sibling VRStageLighting_DMX_Static is present — Static
+        // is the authoritative driver in that case and pushes its own (richer)
+        // set of properties. This component takes over only on GPU-only prefab
+        // variants that have intentionally dropped the Static sibling.
+        // ──────────────────────────────────────────────────────────────────────────
+        public void DriveFixtureShells()
+        {
+            if (fixtureShellRenderers == null || fixtureShellRenderers.Length == 0) return;
+
+            if (_shellProps == null) _shellProps = new MaterialPropertyBlock();
+
+            // Property names and value semantics mirror VRStageLighting_DMX_Static's
+            // _UpdateInstancedProperties() so the same body shader works under either
+            // driver. Fields with no equivalent on this component use sensible
+            // defaults (no NineUniverse, no legacy gobo range, no global brightness
+            // override, no cone-mesh tuning since GPU prefabs drop the cone mesh).
+            _shellProps.SetInt(  "_DMXChannel",          _absChannel);
+            _shellProps.SetInt(  "_NineUniverseMode",    0);
+            _shellProps.SetInt(  "_PanInvert",           invertPan          ? 1 : 0);
+            _shellProps.SetInt(  "_TiltInvert",          invertTilt         ? 1 : 0);
+            _shellProps.SetInt(  "_LegacyGoboRange",     0);
+            _shellProps.SetInt(  "_EnableStrobe",        enableStrobe       ? 1 : 0);
+            _shellProps.SetInt(  "_EnableSpin",          enableGoboSpin     ? 1 : 0);
+            _shellProps.SetInt(  "_EnableDMX",           enableDMXChannels  ? 1 : 0);
+            _shellProps.SetInt(  "_EnableFineChannels",  enableFineChannels ? 1 : 0);
+            _shellProps.SetInt(  "_ProjectionSelection", 1);
+            _shellProps.SetFloat("_FixtureRotationX",    tiltOffset);
+            _shellProps.SetFloat("_FixtureBaseRotationY",panOffset);
+            _shellProps.SetColor("_Emission",            shellEmissionTint);
+            _shellProps.SetColor("_EmissionDMX",         shellEmissionTint);
+            _shellProps.SetFloat("_GlobalIntensity",     1f);
+            _shellProps.SetFloat("_FinalIntensity",      finalIntensity);
+            _shellProps.SetFloat("_MaxMinPanAngle",      maxMinPan  / 2f);
+            _shellProps.SetFloat("_MaxMinTiltAngle",     maxMinTilt / 2f);
+
+            for (int i = 0; i < fixtureShellRenderers.Length; i++)
+            {
+                var r = fixtureShellRenderers[i];
+                if (r != null) r.SetPropertyBlock(_shellProps);
+            }
+        }
+
+        // Matches RawDMXConversion() / SectorConversion() in VRStageLighting_DMX_Static
+        // so the GPU path resolves the same absolute channel index that the legacy
+        // shader path would for the same addressing inputs.
         public int ComputeAbsoluteChannel()
         {
-            var sibling = GetComponent<VRStageLighting_DMX_Static>();
-            bool legacy  = sibling != null ? sibling.useLegacySectorMode : useLegacySectorMode;
-            int  sec     = sibling != null ? sibling.sector              : sector;
-            int  ch      = sibling != null ? sibling.dmxChannel          : dmxChannel;
-            int  uni     = sibling != null ? sibling.dmxUniverse         : dmxUniverse;
-
-            if (legacy)
-                return Mathf.Abs(sec * 13 + 1);
-            return Mathf.Abs(ch + (uni - 1) * 512 + (uni - 1) * 8);
-        }
-
-        public bool GetEffectiveEnableFineChannels()
-        {
-            var s = GetComponent<VRStageLighting_DMX_Static>();
-            return s != null ? s.enableFineChannels : enableFineChannels;
-        }
-
-        // Pan/tilt modifier accessors. Same inheritance rule as ComputeAbsoluteChannel:
-        // when a sibling DMX_Static is present, its equivalent field wins so scene
-        // overrides set on the Static component flow through to the GPU path too.
-        // Note the Static component uses different field names for the offsets
-        // (panOffsetBlueGreen / tiltOffsetBlue).
-        public float GetEffectiveMaxMinPan()
-        {
-            var s = GetComponent<VRStageLighting_DMX_Static>();
-            return s != null ? s.maxMinPan : maxMinPan;
-        }
-
-        public float GetEffectiveMaxMinTilt()
-        {
-            var s = GetComponent<VRStageLighting_DMX_Static>();
-            return s != null ? s.maxMinTilt : maxMinTilt;
-        }
-
-        public bool GetEffectiveInvertPan()
-        {
-            var s = GetComponent<VRStageLighting_DMX_Static>();
-            return s != null ? s.invertPan : invertPan;
-        }
-
-        public bool GetEffectiveInvertTilt()
-        {
-            var s = GetComponent<VRStageLighting_DMX_Static>();
-            return s != null ? s.invertTilt : invertTilt;
-        }
-
-        public float GetEffectivePanOffset()
-        {
-            var s = GetComponent<VRStageLighting_DMX_Static>();
-            return s != null ? s.panOffsetBlueGreen : panOffset;
-        }
-
-        public float GetEffectiveTiltOffset()
-        {
-            var s = GetComponent<VRStageLighting_DMX_Static>();
-            return s != null ? s.tiltOffsetBlue : tiltOffset;
+            if (useLegacySectorMode)
+                return Mathf.Abs(sector * 13 + 1);
+            return Mathf.Abs(dmxChannel + (dmxUniverse - 1) * 512 + (dmxUniverse - 1) * 8);
         }
     }
 }

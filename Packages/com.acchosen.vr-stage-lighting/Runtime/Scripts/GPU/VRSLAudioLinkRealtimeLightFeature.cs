@@ -19,10 +19,10 @@ namespace VRSL
     ///      identical to the DMX realtime light path. The two paths share the same lighting shader
     ///      and the same _VRSLLights / _VRSLLightCount globals.
     ///
-    ///   3. Volumetric pass (optional) — three Render Graph sub-passes that depth-downsample,
+    ///   3. Volumetric pass — three Render Graph sub-passes that depth-downsample,
     ///      raymarch in-scattering at half resolution, and bilaterally composite the result onto
-    ///      the camera colour target (Hidden/VRSL/VolumetricLighting shader). Toggled by the
-    ///      manager's volumetricEnabled flag.
+    ///      the camera colour target (Hidden/VRSL/VolumetricLighting shader). Runs whenever the
+    ///      manager has a volumetric shader assigned.
     ///
     /// Requirements:
     ///   • A VRSL_AudioLinkGPULightManager in the scene with compute and lighting shaders assigned.
@@ -178,7 +178,7 @@ namespace VRSL
             public override void RecordRenderGraph(RenderGraph rg, ContextContainer frame)
             {
                 var mgr = VRSL_AudioLinkGPULightManager.Instance;
-                if (mgr == null || !mgr.volumetricEnabled
+                if (mgr == null
                     || mgr.FixtureCount == 0
                     || mgr.VolumetricMaterial == null
                     || mgr.LightDataBuffer == null) return;
@@ -318,7 +318,7 @@ namespace VRSL
                 Shader.SetGlobalTexture("_VRSLGobos", mgr.GoboArray);
             renderer.EnqueuePass(_computePass);
             renderer.EnqueuePass(_lightingPass);
-            if (mgr.volumetricEnabled && mgr.VolumetricMaterial != null)
+            if (mgr.VolumetricMaterial != null)
                 renderer.EnqueuePass(_volumetricPass);
         }
     }

@@ -44,6 +44,10 @@ namespace VRSL
         // Light Output Axis
         SerializedProperty _localLightDirection;
 
+        // Fixture Shell
+        SerializedProperty _fixtureShellRenderers;
+        SerializedProperty _shellEmissionTint;
+
         static GUIStyle MakeSectionLabel()
         {
             var g = new GUIStyle
@@ -87,6 +91,9 @@ namespace VRSL
             _enableGoboSpin      = serializedObject.FindProperty("enableGoboSpin");
 
             _localLightDirection = serializedObject.FindProperty("localLightDirection");
+
+            _fixtureShellRenderers = serializedObject.FindProperty("fixtureShellRenderers");
+            _shellEmissionTint     = serializedObject.FindProperty("shellEmissionTint");
         }
 
         public override void OnInspectorGUI()
@@ -95,66 +102,19 @@ namespace VRSL
 
             VRSL_EditorHeader.Draw();
 
-            var rt = (VRStageLighting_DMX_RealtimeLight)target;
-            var sibling = rt.GetComponent<VRStageLighting_DMX_Static>();
-            SerializedObject siblingSO = sibling != null ? new SerializedObject(sibling) : null;
-            if (siblingSO != null) siblingSO.Update();
-
             // ── DMX Settings ──────────────────────────────────────────────────
             GUILayout.Label("DMX Settings", _sectionLabel);
             EditorGUILayout.PropertyField(_enableDMXChannels);
-
-            if (sibling != null)
+            EditorGUILayout.PropertyField(_enableFineChannels);
+            EditorGUILayout.PropertyField(_useLegacySectorMode);
+            if (_useLegacySectorMode.boolValue)
             {
-                using (new EditorGUI.DisabledScope(true))
-                {
-                    EditorGUILayout.PropertyField(
-                        siblingSO.FindProperty("enableFineChannels"),
-                        new GUIContent("Enable Fine Channels (inherited)"));
-                }
-
-                EditorGUILayout.HelpBox(
-                    "DMX addressing (legacy sector mode, sector, channel, and universe) "
-                    + "and fine-channel mode are inherited from the sibling "
-                    + "VRStageLighting_DMX_Static component. Edit those values there "
-                    + "to keep both paths in sync.",
-                    MessageType.Info);
-
-                using (new EditorGUI.DisabledScope(true))
-                {
-                    EditorGUILayout.PropertyField(
-                        siblingSO.FindProperty("useLegacySectorMode"),
-                        new GUIContent("Use Legacy Sector Mode (inherited)"));
-                    if (sibling.useLegacySectorMode)
-                    {
-                        EditorGUILayout.PropertyField(
-                            siblingSO.FindProperty("sector"),
-                            new GUIContent("Sector (inherited)"));
-                    }
-                    else
-                    {
-                        EditorGUILayout.PropertyField(
-                            siblingSO.FindProperty("dmxChannel"),
-                            new GUIContent("DMX Channel (inherited)"));
-                        EditorGUILayout.PropertyField(
-                            siblingSO.FindProperty("dmxUniverse"),
-                            new GUIContent("DMX Universe (inherited)"));
-                    }
-                }
+                EditorGUILayout.PropertyField(_sector);
             }
             else
             {
-                EditorGUILayout.PropertyField(_enableFineChannels);
-                EditorGUILayout.PropertyField(_useLegacySectorMode);
-                if (_useLegacySectorMode.boolValue)
-                {
-                    EditorGUILayout.PropertyField(_sector);
-                }
-                else
-                {
-                    EditorGUILayout.PropertyField(_dmxChannel);
-                    EditorGUILayout.PropertyField(_dmxUniverse);
-                }
+                EditorGUILayout.PropertyField(_dmxChannel);
+                EditorGUILayout.PropertyField(_dmxUniverse);
             }
 
             EditorGUILayout.Space();
@@ -176,42 +136,16 @@ namespace VRSL
             // ── Movement Settings ─────────────────────────────────────────────
             GUILayout.Label("Movement Settings", _sectionLabel);
             EditorGUILayout.PropertyField(_enablePanTilt);
-
-            if (sibling != null)
-            {
-                EditorGUILayout.HelpBox(
-                    "Pan/tilt inversion, range, and offset are inherited from the "
-                    + "sibling VRStageLighting_DMX_Static component. Edit those values "
-                    + "there to keep both paths in sync.",
-                    MessageType.Info);
-
-                // Render the inherited values as raw disabled widgets rather than
-                // using PropertyField on the sibling's SerializedProperty — the
-                // sibling's invertPan field carries a [Header("Movement Settings")]
-                // that would duplicate our section title.
-                using (new EditorGUI.DisabledScope(true))
-                {
-                    EditorGUILayout.Toggle("Invert Pan (inherited)",      rt.GetEffectiveInvertPan());
-                    EditorGUILayout.Toggle("Invert Tilt (inherited)",     rt.GetEffectiveInvertTilt());
-                    EditorGUILayout.FloatField("Min/Max Pan Range (inherited)",  rt.GetEffectiveMaxMinPan());
-                    EditorGUILayout.FloatField("Min/Max Tilt Range (inherited)", rt.GetEffectiveMaxMinTilt());
-                    EditorGUILayout.FloatField("Pan Offset (inherited)",  rt.GetEffectivePanOffset());
-                    EditorGUILayout.FloatField("Tilt Offset (inherited)", rt.GetEffectiveTiltOffset());
-                }
-            }
-            else
-            {
-                EditorGUILayout.PropertyField(_invertPan);
-                EditorGUILayout.PropertyField(_invertTilt);
-                EditorGUILayout.PropertyField(
-                    _maxMinPan,
-                    new GUIContent("Min/Max Pan Range", _maxMinPan.tooltip));
-                EditorGUILayout.PropertyField(
-                    _maxMinTilt,
-                    new GUIContent("Min/Max Tilt Range", _maxMinTilt.tooltip));
-                EditorGUILayout.PropertyField(_panOffset);
-                EditorGUILayout.PropertyField(_tiltOffset);
-            }
+            EditorGUILayout.PropertyField(_invertPan);
+            EditorGUILayout.PropertyField(_invertTilt);
+            EditorGUILayout.PropertyField(
+                _maxMinPan,
+                new GUIContent("Min/Max Pan Range", _maxMinPan.tooltip));
+            EditorGUILayout.PropertyField(
+                _maxMinTilt,
+                new GUIContent("Min/Max Tilt Range", _maxMinTilt.tooltip));
+            EditorGUILayout.PropertyField(_panOffset);
+            EditorGUILayout.PropertyField(_tiltOffset);
 
             EditorGUILayout.Space();
             EditorGUILayout.Space();
@@ -228,6 +162,14 @@ namespace VRSL
             // ── Light Output Axis ─────────────────────────────────────────────
             GUILayout.Label("Light Output Axis", _sectionLabel);
             EditorGUILayout.PropertyField(_localLightDirection);
+
+            EditorGUILayout.Space();
+            EditorGUILayout.Space();
+
+            // ── Fixture Shell ─────────────────────────────────────────────────
+            GUILayout.Label("Fixture Shell", _sectionLabel);
+            EditorGUILayout.PropertyField(_fixtureShellRenderers, true);
+            EditorGUILayout.PropertyField(_shellEmissionTint);
 
             serializedObject.ApplyModifiedProperties();
         }

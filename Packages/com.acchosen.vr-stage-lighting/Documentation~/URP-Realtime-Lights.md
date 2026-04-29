@@ -353,48 +353,19 @@ The renderer feature uses the **Unity 6 Render Graph API** exclusively (`RecordR
 
 The `PassData` class per-pass pattern is the idiomatic Unity 6 render graph approach: data needed inside the `SetRenderFunc` lambda is stored in a typed struct so the render graph can defer execution and validate resource usage at compile time.
 
-### Component Inheritance — Sibling DMX_Static
+### Sole Authoring Surface
 
-Every VRSL DMX fixture prefab carries two components on the same GameObject:
-the volumetric-side `VRStageLighting_DMX_Static` that has always been the
-authoring surface for a fixture's DMX addressing and pan/tilt configuration,
-and the new GPU-path `VRStageLighting_DMX_RealtimeLight` that feeds the
-realtime light buffer. To avoid asking scene authors to learn a second
-inspector — and to guarantee the two rendering paths always agree on the same
-per-fixture values — `VRStageLighting_DMX_RealtimeLight` defers to a sibling
-`DMX_Static` for every setting the two components can both express.
-Inheritance triggers whenever `GetComponent<VRStageLighting_DMX_Static>()`
-returns non-null:
+`VRStageLighting_DMX_RealtimeLight` is the sole authoring surface on GPU
+fixture prefabs. There is no `VRStageLighting_DMX_Static` sibling — the
+Static component is exclusive to the legacy mesh-cone fixture prefabs that
+target VRChat / Quest / mobile / Built-in-RP, which use a fundamentally
+different rendering path. The two prefab families share no GameObjects.
 
-| RealtimeLight field | Sibling Static field |
-|---|---|
-| `useLegacySectorMode` | `useLegacySectorMode` |
-| `sector` | `sector` |
-| `dmxChannel` | `dmxChannel` |
-| `dmxUniverse` | `dmxUniverse` |
-| `enableFineChannels` | `enableFineChannels` |
-| `invertPan` | `invertPan` |
-| `invertTilt` | `invertTilt` |
-| `maxMinPan` | `maxMinPan` |
-| `maxMinTilt` | `maxMinTilt` |
-| `panOffset` | `panOffsetBlueGreen` |
-| `tiltOffset` | `tiltOffsetBlue` |
-
-Two offset fields deserve a note: the Static component names them
-`panOffsetBlueGreen` / `tiltOffsetBlue` (legacy terminology for the
-axis-representing vertex colours). The RealtimeLight's `panOffset` / `tiltOffset`
-are the semantic equivalents and map 1:1.
-
-`ComputeAbsoluteChannel()` and the `GetEffective*()` accessors on the
-RealtimeLight encapsulate this. `VRSL_GPULightManager.BuildConfig()` calls
-those accessors rather than reading the fields directly, so the entire GPU
-buffer picks up the sibling's values automatically — scene overrides on the
-Static component flow through without duplication.
-
-When no sibling Static is present (bare RealtimeLight on a custom fixture),
-the component falls back to its own fields. The behaviour is transparent:
-adding or removing a Static sibling changes which source is authoritative
-without any code change on the fixture.
+`ComputeAbsoluteChannel()` reads the RealtimeLight's own
+`useLegacySectorMode` / `sector` / `dmxChannel` / `dmxUniverse` and produces
+the same absolute channel index `RawDMXConversion()` /
+`SectorConversion()` would on a Static component for the same inputs — the
+DMX texture decode pipeline they both feed is identical.
 
 ### enableConeWidth Toggle
 
@@ -425,12 +396,10 @@ inspector with a sectioned layout matching the Static editor's visual style:
 - **Movement Settings** — pan/tilt range, inversion, offsets
 - **Fixture Settings** — strobe and gobo toggles
 - **Light Output Axis** — local light direction override
-
-When a sibling `DMX_Static` is attached, the addressing and movement blocks
-replace their editable fields with a HelpBox and read-only
-"(inherited)" widgets rendered through the `GetEffective*()` accessors. This
-both documents which source is authoritative and shows the effective values
-without forcing the author to open the Static component to check them.
+- **Fixture Shell** — optional `MeshRenderer[]` list and emission tint that the
+  RealtimeLight pushes a `MaterialPropertyBlock` to so the legacy fixture-mesh
+  shader on the lamp body still receives the right per-instance DMX channel
+  offset under the GPU prefab path
 
 The section header strip is rendered by `VRSL_EditorHeader` which inlines the
 logo-loading / version-reading / Shuriken-bar logic. It's in the neutrally
@@ -487,12 +456,13 @@ The GPU scripts live in `Runtime/Scripts/GPU/` under `VRSL.GPU.asmdef`, separate
    | `lightingShader` | `Hidden/VRSL/DeferredLighting` |
 
 2. For each fixture, add **`VRStageLighting_DMX_RealtimeLight`** and configure:
-   - `dmxChannel` / `dmxUniverse` — matching your Artnet patch. If the GameObject also has a sibling `VRStageLighting_DMX_Static`, these (and `sector`, `useLegacySectorMode`) are inherited from it automatically; the fields are shown read-only in the inspector.
+   - `dmxChannel` / `dmxUniverse` — matching your Artnet patch.
    - `maxIntensity` — peak lux emitted at DMX full-on; tune per scene scale.
    - `range` — light attenuation range in metres.
    - `minSpotAngle` / `maxSpotAngle` — cone half-angles at DMX ch+4 = 0 and 255. Set `enableConeWidth = false` on static fixtures (par cans, blinders) to lock the cone at `maxSpotAngle` regardless of ch+4 traffic.
    - `isPointLight` — emit as a point light instead of a spot.
-   - For moving heads: enable `enablePanTilt`. Pan/tilt inversion, range, and offsets inherit from a sibling `DMX_Static` when present; on bare fixtures they're edited directly on this component.
+   - For moving heads: enable `enablePanTilt` and configure pan/tilt inversion, range, and offsets directly on this component.
+   - `fixtureShellRenderers` — optional list of `MeshRenderer`s on the fixture body that should receive the DMX-decoded color/intensity for the lamp lens. Leave empty if the prefab doesn't carry a body emissive mesh.
 
    The GPU path does **not** use Unity's `Light` component — range, spot angles, colour, intensity, direction are all computed from the component fields and DMX data and delivered to the deferred pass via the fixture config buffer.
 
@@ -531,5 +501,5 @@ VRSL_GPULightManager.Instance.RefreshFixtures();
 | `Runtime/Shaders/Shared/VRSLLightingLibrary.hlsl` | — | HLSL struct definitions and light evaluation functions shared by compute and fragment shaders |
 | `Runtime/Shaders/Compute/VRSLDMXLightUpdate.compute` | — | Compute shader; DMX texture sampling, pan/tilt rotation, light buffer write |
 | `Runtime/Shaders/VRSLDeferredLighting.shader` | — | Fullscreen additive pass; depth/normal read, world position reconstruction, light loop |
-| `Editor/VRStageLighting_DMX_RealtimeLightEditor.cs` | VRSL.Editor | Custom inspector; section layout, sibling-inherited read-only field display |
+| `Editor/VRStageLighting_DMX_RealtimeLightEditor.cs` | VRSL.Editor | Custom inspector; sectioned layout |
 | `Editor/VRSL_EditorHeader.cs` | VRSL.Editor | Shared VRSL logo + version bar drawing helper; used by both the DMX/AudioLink Static editors and the realtime light editors |
