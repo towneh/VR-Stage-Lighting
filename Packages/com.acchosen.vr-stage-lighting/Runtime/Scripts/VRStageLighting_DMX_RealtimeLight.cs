@@ -87,13 +87,14 @@ namespace VRSL
         [Tooltip("Light attenuation range. Increase for larger spaces.")]
         public float range = 20f;
 
-        [Range(0f, 2f)]
+        [Range(0f, 0.2f)]
         [Tooltip("Distance in metres from the fixture's lens back to the conceptual cone apex. "
                + "0 (default) treats the light as a point source — the cone tapers to zero at "
                + "the fixture position. A non-zero value pushes the apex behind the fixture so "
                + "the cone has finite width = emitterDepth × tan(halfAngle) at the lens, which "
-               + "matches wide-aperture fixtures like LED bars and washes. Tune so the visible "
-               + "beam width at the lens matches the fixture's emitting surface.")]
+               + "matches wide-aperture fixtures like LED bars and washes. Capped at 0.2m — "
+               + "beyond that the visible beam radius exceeds the fixture lens mesh and the "
+               + "cone reads as detached from the fixture body.")]
         public float emitterDepth = 0f;
 
         [Tooltip("Emit as a point light instead of a spot.")]

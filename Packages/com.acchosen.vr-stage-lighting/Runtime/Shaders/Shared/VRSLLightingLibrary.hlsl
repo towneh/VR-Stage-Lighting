@@ -56,13 +56,24 @@ float VRSL_DistanceAttenuation(float distSq, float range)
 // conceptual apex back along lightDir by that distance, so at the light's actual
 // position the cone has finite radius = emitterDepth × tan(halfAngle) instead of
 // converging to a point. emitterDepth = 0 reproduces the point-source behaviour.
+//
+// A second clamp ensures only surfaces in front of the lens receive contribution.
+// Without that, emitterDepth > 0 lets the cone illuminate geometry between the
+// virtual apex and the actual lens position — including the inside of the
+// fixture body itself, which then bleeds visibly through the outer mesh because
+// this pipeline doesn't cast shadows. The 5cm soft transition avoids aliasing
+// at the lens plane.
 float VRSL_SpotAttenuation(float3 lightDir, float3 toLight, float cosInner,
                            float cosOuter, float emitterDepth)
 {
     float3 toApex = toLight - lightDir * emitterDepth;
     float cosAngle = dot(-lightDir, normalize(toApex));
     float t = saturate((cosAngle - cosOuter) / max(cosInner - cosOuter, 0.0001));
-    return t * t;
+
+    float forwardOfLens = dot(-toLight, lightDir);
+    float lensClip      = smoothstep(0.0, 0.05, forwardOfLens);
+
+    return t * t * lensClip;
 }
 
 // Evaluate a single VRSL light at a world-space surface point with a normal
