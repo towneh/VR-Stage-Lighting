@@ -7,27 +7,27 @@ using UnityEngine.Rendering.RenderGraphModule;
 namespace VRSL
 {
     /// <summary>
-    /// URP ScriptableRendererFeature (Unity 6 Render Graph API) that drives the
-    /// VRSL URP realtime-light pipeline in three phases per frame:
+    /// Holds the three Render Graph pass classes that make up the VRSL URP DMX
+    /// realtime-light pipeline:
     ///
-    ///   1. Compute pass  — dispatches VRSLDMXLightUpdate.compute, which reads the
+    ///   1. ComputePass — dispatches VRSLDMXLightUpdate.compute, which reads the
     ///      three DMX RenderTextures and writes a VRSLLightData StructuredBuffer.
-    ///      Runs before opaque rendering so shadow maps can pick up light positions.
     ///
-    ///   2. Fullscreen additive pass — after opaque rendering, reconstructs world
-    ///      position from depth + normals and adds each GPU-decoded light's
-    ///      contribution to the frame (Hidden/VRSL/DeferredLighting shader).
+    ///   2. LightingPass — fullscreen additive pass; reconstructs world position
+    ///      from depth + normals and adds each GPU-decoded light's contribution
+    ///      to the frame (Hidden/VRSL/DeferredLighting shader).
     ///
-    ///   3. Volumetric pass — three Render Graph sub-passes that depth-
-    ///      downsample, raymarch in-scattering at half resolution, and
-    ///      bilaterally composite the result onto the camera colour target
-    ///      (Hidden/VRSL/VolumetricLighting shader). Runs whenever the
-    ///      manager has a volumetric shader assigned.
+    ///   3. VolumetricPass — three Render Graph sub-passes that depth-downsample,
+    ///      raymarch in-scattering at half resolution, and bilaterally composite
+    ///      the result onto the camera colour target (Hidden/VRSL/VolumetricLighting).
     ///
-    /// Requirements:
-    ///   • A VRSL_URPLightManager in the scene with the textures and shaders assigned.
-    ///   • "Depth Normals Prepass" enabled on this URP Renderer asset.
-    ///   • This feature added to the same URP Renderer asset.
+    /// VRSL_URPLightManager subscribes to RenderPipelineManager.beginCameraRendering
+    /// at runtime and enqueues these pass instances per camera, so this feature does
+    /// not need to be added to the URP Renderer asset for the pipeline to run. The
+    /// feature shell remains as a dormant fallback path: AddRenderPasses early-outs
+    /// when the manager's useRuntimePassInjection flag is true (the default), and
+    /// only takes over when the user disables that flag and adds this feature to
+    /// their renderer asset manually.
     /// </summary>
     [System.Serializable]
     public class VRSLRealtimeLightFeature : ScriptableRendererFeature

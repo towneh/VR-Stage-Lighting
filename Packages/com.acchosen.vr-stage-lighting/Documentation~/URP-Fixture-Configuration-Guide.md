@@ -17,11 +17,11 @@ Three menu utilities cover most setup work. All are idempotent — safe to re-ru
 
 | Menu | Effect |
 |---|---|
-| **VRSL → Configure URP Renderer for VRSL Realtime Lights (DMX)** | Sets the active URP renderer to Forward+, disables Depth Priming, enables the URP asset's Depth Texture, appends `VRSLRealtimeLightFeature`. |
+| **VRSL → Configure URP Renderer for VRSL Realtime Lights** | Sets the active URP renderer to Forward+, disables Depth Priming, enables the URP asset's Depth Texture. |
 | **VRSL → Add VRSL URP Light Manager to Active Scene** | Creates a `VRSL URP Light Manager` GameObject in the active scene with compute / lighting / volumetric shader references assigned. |
 | **VRSL → Setup AudioLink URP Realtime Lights in Scene** | Adds `VRStageLighting_AudioLink_RealtimeLight` to every AudioLink mover spotlight in the active scene and wires up pan/tilt transforms. |
 
-For AudioLink scenes, also add `VRSLAudioLinkRealtimeLightFeature` to the URP Renderer (manual step — there is no menu utility for this) or place the supplied `VRSL-AudioLink-URP-LightManager` prefab.
+The managers inject their render passes at runtime via `RenderPipelineManager.beginCameraRendering`, so there is no `ScriptableRendererFeature` to add to the URP Renderer asset. This is what lets the package work in environments where users don't author the renderer asset (notably VRChat worlds, where the renderer is owned by the VRChat client).
 
 The remainder of this document describes manual setup and the per-fixture fields exposed in the inspectors.
 
@@ -31,9 +31,10 @@ The remainder of this document describes manual setup and the per-fixture fields
 
 1. Set **Rendering Path** to **Forward+** on the URP asset.
 2. Open the URP Renderer asset used by your camera.
-3. Set **Depth Priming Mode** → `Disabled` (required for Depth Normals Prepass to populate correctly under Forward+).
-4. Enable **Depth Normals Prepass**.
-5. Under **Renderer Features**, add **VRSLRealtimeLightFeature** (DMX) and/or **VRSLAudioLinkRealtimeLightFeature** (AudioLink).
+3. Set **Depth Priming Mode** → `Disabled` (required for the depth-normals prepass to populate correctly under Forward+).
+4. Enable the URP asset's **Depth Texture**.
+
+The depth-normals prepass itself is requested at runtime by the manager via `ConfigureInput(ScriptableRenderPassInput.Normal)` on its lighting pass — no manual toggle is required.
 
 ---
 
@@ -229,4 +230,4 @@ URP prefabs are standalone — they ship without the legacy `*_Static` sibling c
 | `VRSL-ExampleScene-EditorViaOSC-Horizontal-URPRealtimeLights` | `Runtime/Example Scenes/DMX-EditorViaOSCScenes/` |
 | `VRSL-ExampleScene-EditorViaOSC-Vertical-URPRealtimeLights` | `Runtime/Example Scenes/DMX-EditorViaOSCScenes/` |
 
-Each ships with the renderer feature configured and the manager pre-populated.
+Each ships with the manager pre-populated and the URP asset / Renderer asset configured for Forward+ + depth.

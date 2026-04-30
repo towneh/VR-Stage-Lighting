@@ -54,9 +54,10 @@ namespace VRSL
 
         [Header("Volumetric")]
         [Tooltip("Assign Hidden/VRSL/VolumetricLighting (the VRSLVolumetricLighting shader asset). "
-               + "The volumetric raymarch pass runs whenever this is assigned and the renderer "
-               + "feature is active — there is no separate enable toggle since the URP prefab "
-               + "path has no legacy mesh-cone shader to fall back to.")]
+               + "The volumetric raymarch pass runs whenever this is assigned — there is no "
+               + "separate enable toggle since the URP prefab path has no legacy mesh-cone "
+               + "shader to fall back to. To silence cones at runtime, drive volumetricIntensity "
+               + "to 0 instead.")]
         public Shader volumetricShader;
 
         [Tooltip("Render resolution for the raymarch. Half is half-res with bilateral upsample "
@@ -131,7 +132,7 @@ namespace VRSL
                + "DMX channel +11 selects the slot (0 = open/no gobo). Order matches DMX value range.")]
         public Texture2D[] goboTextures;
 
-        // ── Public API for the renderer feature ───────────────────────────────
+        // ── Public API for the render passes ──────────────────────────────────
         public GraphicsBuffer  FixtureConfigBuffer { get; private set; }
         public GraphicsBuffer  LightDataBuffer     { get; private set; }
         public RTHandle        DMXMainHandle       { get; private set; }

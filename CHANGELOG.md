@@ -6,7 +6,7 @@
 
 VRSL fixtures now genuinely illuminate scene geometry alongside their volumetric beams, via a new GPU-driven realtime light pipeline. Floors, walls, and props receive real-time light from every active fixture.
 
-The pipeline runs as a `ScriptableRendererFeature` with three Render Graph passes — all reading the same per-fixture GPU buffer:
+The pipeline is three Render Graph passes — all reading the same per-fixture GPU buffer — injected at runtime by the manager MonoBehaviour via `RenderPipelineManager.beginCameraRendering`. Nothing to add to your URP Renderer asset; the package works in environments where users don't author the renderer asset, including VRChat worlds.
 
 - **Compute** decodes per-fixture state (position, direction, colour, intensity, cone, gobo) into a `StructuredBuffer`.
 - **Surface lighting** is a fullscreen additive pass that evaluates every fixture per pixel and accumulates onto the camera colour target.
@@ -40,7 +40,7 @@ The new code lives in a `VRSL.URP` assembly compiled only when URP ≥17.0 is in
 
 ### Setup Utilities
 
-- **VRSL → Configure URP Renderer for VRSL Realtime Lights (DMX)** sets Forward+, disables Depth Priming, enables the URP asset's Depth Texture, and appends the renderer feature.
+- **VRSL → Configure URP Renderer for VRSL Realtime Lights** sets Forward+, disables Depth Priming, and enables the URP asset's Depth Texture.
 - **VRSL → Add VRSL URP Light Manager to Active Scene** drops a configured manager into the active scene with compute / lighting / volumetric shader references assigned.
 - **VRSL → Setup AudioLink URP Realtime Lights in Scene** configures every AudioLink mover spotlight in one click.
 

@@ -13,10 +13,13 @@ This document is the architecture and tuning reference. For setup steps and per-
 | Unity | 6.0 LTS |
 | Universal Render Pipeline | 17.0 |
 | URP Rendering Path | Forward+ |
-| URP Renderer features | Depth Normals Prepass enabled, Depth Priming Mode = `Disabled` |
+| URP asset Depth Texture | enabled |
+| URP Renderer Depth Priming Mode | `Disabled` |
 | AudioLink (AudioLink path only) | installed and active in the scene |
 
 The pipeline lives in the `VRSL.URP` assembly, gated by a `VRSL_URP` define emitted only when URP ≥17.0 is installed. VRChat / Built-in RP / Quest / mobile builds skip the assembly automatically — nothing to remove, nothing to fail to compile. The DMX CRT decode chain is shared with the legacy volumetric shaders; AudioLink scenes can run without GridReader or any DMX source.
+
+The two managers (`VRSL_URPLightManager` for DMX, `VRSL_AudioLinkURPLightManager` for AudioLink) inject their render passes at runtime by subscribing to `RenderPipelineManager.beginCameraRendering` and calling `EnqueuePass` directly on each camera's `ScriptableRenderer`. There is no `ScriptableRendererFeature` to add to the URP Renderer asset — the package works in environments where users don't author the renderer asset, notably VRChat worlds. The depth-normals prepass is requested per-camera via `ConfigureInput(ScriptableRenderPassInput.Normal)` on the lighting pass before enqueue, so the prepass scheduling happens automatically.
 
 ---
 
@@ -42,7 +45,7 @@ Per-fixture config (StructuredBuffer)
   screen-space depth-occluded against on-screen geometry.
 ```
 
-Both data sources (DMX, AudioLink) write the same `VRSLLightData` struct, so the surface and volumetric shaders are identical between paths. The two `ScriptableRendererFeature` assets — `VRSLRealtimeLightFeature` (DMX) and `VRSLAudioLinkRealtimeLightFeature` (AudioLink) — differ only in their compute pass and config buffer types.
+Both data sources (DMX, AudioLink) write the same `VRSLLightData` struct, so the surface and volumetric shaders are identical between paths. The pass classes (`ComputePass`, `LightingPass`, `VolumetricPass`) live as nested types inside `VRSLRealtimeLightFeature` and `VRSLAudioLinkRealtimeLightFeature` — the manager instantiates them and enqueues them per camera. The feature shells themselves are dormant fallbacks that early-out unless the manager's `useRuntimePassInjection` flag is disabled, which exists for advanced users who want to drive the passes manually through the URP Renderer asset.
 
 ### Differences between data sources
 
@@ -210,7 +213,7 @@ The half-res raymarch jitters the ray origin per pixel using an R2 (plastic-cons
 `multi_compile _ _VRSL_VOLUMETRIC_NOISE` toggles between two variants:
 
 - **Off** (clean) — uniform `volumetricDensity` per step.
-- **On** (modulated) — density is multiplied by a procedural hash-based 3D value noise sampled in world space and drifting vertically on `_Time.y`. ~50 ALU per step (~5–10% extra raymarch cost at typical fixture counts). The renderer features set the keyword on the volumetric material each frame from the manager flag, so disabling fully removes the noise code from the active variant.
+- **On** (modulated) — density is multiplied by a procedural hash-based 3D value noise sampled in world space and drifting vertically on `_Time.y`. ~50 ALU per step (~5–10% extra raymarch cost at typical fixture counts). The volumetric pass sets the keyword on the volumetric material each frame from the manager flag, so disabling fully removes the noise code from the active variant.
 
 ### Scene-fog coupling
 
@@ -245,13 +248,13 @@ Uploaded once per frame as global vectors in the volumetric pass `SetRenderFunc`
 
 ## Render Graph Integration
 
-Both renderer features use the Unity 6 Render Graph API (`RecordRenderGraph`). Resources are imported into the graph as `BufferHandle` / `TextureHandle` with explicit `AccessFlags`, letting URP insert the correct GPU memory barriers and validate dependencies at compile time.
+All passes use the Unity 6 Render Graph API (`RecordRenderGraph`). Resources are imported into the graph as `BufferHandle` / `TextureHandle` with explicit `AccessFlags`, letting URP insert the correct GPU memory barriers and validate dependencies at compile time.
 
 A few Unity 6-specific requirements are worth flagging for contributors:
 
 - Raster passes that call `cmd.SetGlobalBuffer` / `cmd.SetGlobalInteger` / `cmd.SetGlobalTexture` must declare `builder.AllowGlobalStateModification(true)` before `SetRenderFunc`, or Unity throws `InvalidOperationException: Modifying global state from this command buffer is not allowed`.
-- `ConfigureInput` must be called in `AddRenderPasses`. `SetupRenderPasses` does not exist on `ScriptableRendererFeature` in this URP version.
-- `Texture2DArray` resources (the gobo wheel) are bound via `Shader.SetGlobalTexture` in `AddRenderPasses` rather than inside the render graph itself, since the graph only accepts `TextureHandle`.
+- `ConfigureInput` is called on each pass instance before `EnqueuePass` — for the runtime-injection path this happens inside the manager's `beginCameraRendering` callback per camera. URP reads the flags during enqueue and schedules the depth-normals prepass automatically.
+- `Texture2DArray` resources (the gobo wheel) are bound via `Shader.SetGlobalTexture` in the manager's per-camera callback rather than inside the render graph itself, since the graph only accepts `TextureHandle`.
 
 ---
 
@@ -282,8 +285,8 @@ A few Unity 6-specific requirements are worth flagging for contributors:
 | `Runtime/Scripts/VRStageLighting_AudioLink_RealtimeLight.cs` | VRSL.Core | AudioLink per-fixture config component |
 | `Runtime/Scripts/URP/VRSL_URPLightManager.cs` | VRSL.URP | DMX manager singleton |
 | `Runtime/Scripts/URP/VRSL_AudioLinkURPLightManager.cs` | VRSL.URP | AudioLink manager singleton |
-| `Runtime/Scripts/URP/VRSLRealtimeLightFeature.cs` | VRSL.URP | DMX renderer feature (compute + surface + volumetric) |
-| `Runtime/Scripts/URP/VRSLAudioLinkRealtimeLightFeature.cs` | VRSL.URP | AudioLink renderer feature |
+| `Runtime/Scripts/URP/VRSLRealtimeLightFeature.cs` | VRSL.URP | DMX pass classes (compute + surface + volumetric); feature shell is dormant by default |
+| `Runtime/Scripts/URP/VRSLAudioLinkRealtimeLightFeature.cs` | VRSL.URP | AudioLink pass classes; feature shell dormant by default |
 | `Runtime/Scripts/URP/Editor/VRSL_URPRendererSetup.cs` | VRSL.URP.Editor | Menu utilities for URP renderer + scene setup (DMX) |
 | `Runtime/Shaders/Compute/VRSLDMXLightUpdate.compute` | — | DMX compute kernel |
 | `Runtime/Shaders/Compute/VRSLAudioLinkLightUpdate.compute` | — | AudioLink compute kernel |

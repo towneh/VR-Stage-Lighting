@@ -1,5 +1,5 @@
 // Raymarched volumetric in-scattering for VRSL URP realtime lights.
-// Runs after VRSLDeferredLighting in the same renderer feature, reading the
+// Runs immediately after VRSLDeferredLighting in the same per-camera schedule, reading the
 // same _VRSLLights StructuredBuffer the surface pass produces. The raymarch
 // itself is shared between two execution modes selected by the manager:
 //
