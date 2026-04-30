@@ -28,7 +28,7 @@ namespace VRSL.EditorScripts
             }
             string sceneName = SceneManager.GetActiveScene().name;
             //Find all objects in scene and get their materials if they are VRSL materials
-            Transform[] transforms = FindObjectsByType<Transform>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
+            Transform[] transforms = FindObjectsByType<Transform>(FindObjectsInactive.Exclude);
             Dictionary<string,Material> vrslMats = new Dictionary<string, Material>();
             for(int i = 0; i < transforms.Length; i++)
             {

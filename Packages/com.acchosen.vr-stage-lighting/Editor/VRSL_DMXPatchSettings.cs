@@ -222,7 +222,12 @@ namespace VRSL.EditorScripts
 
         private VRSL_LocalUIControlPanel panel;
         private string[] dataToPDF;
+#if UNITY_EDITOR_WIN && !UNITY_6000_0_OR_NEWER
+        // Used only by the System.Drawing PDF generation path, which is gated to
+        // pre-Unity-6 Windows editors. Declaring it under the same gate keeps the
+        // Unity 6 compiler from warning that the field is assigned but unread.
         private int pdfLineCount = 0;
+#endif
         private DataTable patchList;
 
 

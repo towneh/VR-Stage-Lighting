@@ -269,7 +269,7 @@ namespace VRSL
         {
             _fixtures.Clear();
             _fixtures.AddRange(FindObjectsByType<VRStageLighting_DMX_RealtimeLight>(
-                FindObjectsSortMode.None));
+                FindObjectsInactive.Exclude));
 
             FixtureCount = _fixtures.Count;
             if (FixtureCount == 0) return;

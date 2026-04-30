@@ -107,7 +107,7 @@ namespace VRSL.EditorScripts
         {
             var report = new List<string>();
 
-            var manager = Object.FindFirstObjectByType<VRSL_URPLightManager>();
+            var manager = Object.FindAnyObjectByType<VRSL_URPLightManager>();
             if (manager == null)
             {
                 var go = new GameObject("VRSL URP Light Manager");
