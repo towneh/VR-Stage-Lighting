@@ -9,7 +9,7 @@ namespace VRSL
     /// Shared header drawing helpers used by VRSL custom inspectors — the VRSL
     /// logo, the package version bar, and the composite Draw() that combines
     /// them with spacing. Neutrally named so both the Udon-side static editors
-    /// and the URP GPU realtime-light editors can share one implementation.
+    /// and the URP realtime-light editors can share one implementation.
     /// </summary>
     internal static class VRSL_EditorHeader
     {

@@ -1,36 +1,61 @@
 # VR Stage Lighting - Changelog
 
-## 2.9.0 Change Log - April 24, 2026
+## 2.9.0 Change Log - May 1, 2026
 
-### GPU Realtime Light Pipeline
+### URP Realtime Lights — Unity 6 / URP 17+ / Forward+
 
-- Added a fully GPU-driven realtime light pipeline for **Unity 6 LTS or later** running **URP 17+ in the Forward+ rendering path**. Fixtures now genuinely illuminate scene geometry — floors, walls, and props respond to the light show rather than just displaying volumetric beams.
-- The new pipeline is split into two render graph passes per data source:
-  - **Compute Pass** (`BeforeRenderingOpaques`): reads fixture config from a `StructuredBuffer` and writes per-fixture light data (position, direction, colour, intensity, cone angles, gobo) entirely on the GPU.
-  - **Lighting Pass** (`AfterRenderingOpaques`): a fullscreen additive triangle pass that reconstructs world-space positions from the depth buffer, reads the normals prepass, evaluates all active fixtures per pixel, and accumulates the result into the active colour target.
-- **DMX GPU path**: add a `VRStageLighting_DMX_RealtimeLight` component to any DMX fixture and register it with the `VRSL_GPULightManager` singleton. The compute shader reads the existing CRT RenderTextures directly — no CPU work per frame per fixture, and no changes to the DMX decode chain are required.
-- **AudioLink GPU path**: add a `VRStageLighting_AudioLink_RealtimeLight` component to any AudioLink mover fixture. The `VRSL_AudioLinkGPULightManager` singleton uploads fixture directions from animated transforms each frame (~112 bytes per fixture — no GPU→CPU readback) and the compute shader reads amplitude and colour from the global `_AudioTexture`. Use the new **VRSL → Setup AudioLink GPU Realtime Lights in Scene** editor utility to configure an entire scene in one click.
-- Added `VRSLRealtimeLightFeature` and `VRSLAudioLinkRealtimeLightFeature` `ScriptableRendererFeature` assets for wiring up each path in your URP Renderer.
-- Added new GPU-ready prefabs: `VRSL-AudioLink-GPU-Manager`, `VRSL-AudioLink-Mover-Spotlight-GPU`, `VRSL-AudioLink-Mover-Washlight-GPU`, `VRSL-AudioLink-Static-Blinder-GPU`, `VRSL-AudioLink-Static-ParLight-GPU`, plus DMX GPU Blinder, ParLight, Mover Spotlight and Mover Washlight prefabs across Horizontal / Vertical / Legacy modes.
-- Added new example scenes demonstrating both paths: `VRSL-ExampleScene-AudioLink-URPRealtimeLights`, `VRSL-ExampleScene-EditorViaOSC-Horizontal-URPRealtimeLights`, and `VRSL-ExampleScene-EditorViaOSC-Vertical-URPRealtimeLights`.
-- The entire GPU pipeline lives in a new `VRSL.GPU` assembly that only compiles when URP ≥ 17.0 is installed, keeping VRChat/UdonSharp builds completely unaffected.
+VRSL fixtures now genuinely illuminate scene geometry alongside their volumetric beams, via a new GPU-driven realtime light pipeline. Floors, walls, and props receive real-time light from every active fixture.
 
-### Sibling-Component Inheritance
+The pipeline runs as a `ScriptableRendererFeature` with three Render Graph passes — all reading the same per-fixture GPU buffer:
 
-- Realtime light components now inherit configuration from their sibling Static component on the same GameObject. Scene-level overrides flow through automatically — no duplicate fields to edit on both.
-  - **DMX side** — `VRStageLighting_DMX_RealtimeLight` inherits addressing (sector, useLegacySectorMode, dmxChannel, dmxUniverse), fine-channel mode, and every pan/tilt modifier (invertPan, invertTilt, maxMinPan, maxMinTilt, panOffset, tiltOffset) from a sibling `VRStageLighting_DMX_Static`.
-  - **AudioLink side** — `VRStageLighting_AudioLink_RealtimeLight` inherits AudioLink reaction params (enableAudioLink, band, delay, bandMultiplier), final intensity, emission colour, gobo selection and gobo spin speed from a sibling `VRStageLighting_AudioLink_Static`.
+- **Compute** decodes per-fixture state (position, direction, colour, intensity, cone, gobo) into a `StructuredBuffer`.
+- **Surface lighting** is a fullscreen additive pass that evaluates every fixture per pixel and accumulates onto the camera colour target.
+- **Volumetric** is a raymarched in-scattering pass — a dimmed light gives a dimmed cone with no extra wiring. Cones are screen-space depth-occluded against on-screen geometry, avatars, and props.
 
-### Custom Inspectors
+Two data sources are supported with parallel components:
 
-- New sectioned inspectors for both realtime light components matching the visual style of the Static editors — white bold section titles, consistent grouping (DMX/AudioLink Settings, General Settings, Movement Settings, Fixture Settings, Light Output Axis).
-- When a sibling Static is attached, the inherited fields render as read-only "(inherited)" widgets so the effective addressing and movement values are visible at a glance.
-- Shared `VRSL_EditorHeader` helper now draws the VRSL logo and version bar at the top of both the Static and realtime light inspectors — one source of truth for the header look.
+- **DMX** — `VRStageLighting_DMX_RealtimeLight` + `VRSL_URPLightManager`. Decodes the existing CRT chain on the GPU; no per-frame CPU cost per fixture.
+- **AudioLink** — `VRStageLighting_AudioLink_RealtimeLight` + `VRSL_AudioLinkURPLightManager`. Reads animated transform directions on the CPU each frame and samples the global `_AudioTexture` on the GPU.
+
+The new code lives in a `VRSL.URP` assembly compiled only when URP ≥17.0 is installed. VRChat / Built-in RP / Quest / mobile builds are unaffected.
+
+### Volumetric Tuning
+
+- **Resolution mode** — `Half` (default; live VR) or `Full` (cinematic capture and high-perf desktops; ~4× per-pixel cost).
+- **Modulated 3D-noise density** toggle — adds dusty stage haze via procedural value-noise modulation per ray step. Off compiles the noise out of the shader entirely (zero cost).
+- **Scene-fog coupling** toggle — when on, density is multiplied by `unity_FogParams.x` and tint by `unity_FogColor`, so a URP VolumeProfile globally drives shaft brightness.
+
+### Per-Fixture Tuning
+
+- **`emitterDepth`** pushes the cone apex back along the light direction so wide-aperture fixtures (LED bars, par cans) read with a beam width that matches their physical emitter. Default 0 reproduces a point-source.
+- Wash-mover cones keep most of the cone bright with a long soft feather at the rim, matching the broad diffuse character of real wash fixtures.
+
+### Authoring
+
+- Realtime light components inherit addressing and movement parameters from a sibling `*_Static` component when present, so VRChat-side authoring stays unchanged while the URP pipeline layers on top. Inherited fields render as read-only "(inherited)" widgets in the inspector.
+  - DMX side inherits sector / channel / universe addressing, fine-channel mode, and every pan/tilt modifier.
+  - AudioLink side inherits band, delay, multiplier, final intensity, emission colour, gobo selection, and gobo spin.
+- URP prefab variants ship as standalone — the Realtime light is the sole authoring surface and drives the fixture body emissive directly via `fixtureShellRenderers`.
+- New sectioned custom inspectors match the Static editor style.
+
+### Setup Utilities
+
+- **VRSL → Configure URP Renderer for VRSL Realtime Lights (DMX)** sets Forward+, disables Depth Priming, enables the URP asset's Depth Texture, and appends the renderer feature.
+- **VRSL → Add VRSL URP Light Manager to Active Scene** drops a configured manager into the active scene with compute / lighting / volumetric shader references assigned.
+- **VRSL → Setup AudioLink URP Realtime Lights in Scene** configures every AudioLink mover spotlight in one click.
+
+### Prefabs and Example Scenes
+
+URP prefab variants for DMX (Mover Spotlight, Mover Washlight, Static ParLight, Static Blinder across Horizontal / Vertical / Legacy modes) and AudioLink (the same fixture types plus the manager prefab). Three new example scenes: `VRSL-ExampleScene-AudioLink-URPRealtimeLights`, `VRSL-ExampleScene-EditorViaOSC-Horizontal-URPRealtimeLights`, `VRSL-ExampleScene-EditorViaOSC-Vertical-URPRealtimeLights`.
+
+### Documentation
+
+- `Documentation~/URP-Realtime-Volumetric-Lights.md` — architecture, struct layouts, render-graph passes, lighting library, volumetric strategy, performance, known limitations.
+- `Documentation~/URP-Fixture-Configuration-Guide.md` — setup steps and per-fixture authoring for both DMX and AudioLink.
 
 ### Other Changes
 
 - Post-processing example assets split into separate URP and PPv2 variants.
-- Added comprehensive implementation guides under `Documentation~/`: `URP-Realtime-Lights.md` and `AudioLink-GPU-Realtime-Lights.md` covering requirements, pipeline architecture, performance model, setup, and known limitations for each path.
 
 ## 2.8.0 Change Log - May 21, 2024
 

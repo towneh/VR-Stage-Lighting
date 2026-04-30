@@ -1,17 +1,22 @@
-// Raymarched volumetric in-scattering for VRSL GPU realtime lights.
+// Raymarched volumetric in-scattering for VRSL URP realtime lights.
 // Runs after VRSLDeferredLighting in the same renderer feature, reading the
-// same _VRSLLights StructuredBuffer the surface pass produces. Three sub-passes:
+// same _VRSLLights StructuredBuffer the surface pass produces. The raymarch
+// itself is shared between two execution modes selected by the manager:
 //
-//   Pass 0 — Depth Downsample. Full-res _CameraDepthTexture → half-res depth
-//            (min-depth in linear, max raw value in reversed-Z) so the
-//            raymarch terminates correctly at silhouettes.
+//   Half-res mode (default) — three sub-passes:
+//     Pass 0 — Depth Downsample. Full-res _CameraDepthTexture → half-res depth
+//              (min-depth in linear, max raw value in reversed-Z) so the
+//              raymarch terminates correctly at silhouettes.
+//     Pass 1 — Raymarch (half-res). Half-res in-scattering accumulation along
+//              each pixel's view ray; output is a half-res HDR colour buffer.
+//     Pass 2 — Bilateral Upsample. Edge-aware reconstruction to full resolution,
+//              additive blend onto the camera color target.
 //
-//   Pass 1 — Raymarch. Half-res in-scattering accumulation along each pixel's
-//            view ray. Per step: density × Σ(light cone × distance × phase ×
-//            gobo) over all VRSL lights. Output: half-res HDR in-scattering RT.
-//
-//   Pass 2 — Bilateral Upsample. Edge-aware reconstruction to full resolution,
-//            additive blend onto the camera color target.
+//   Full-res mode — single pass:
+//     Pass 3 — Raymarch (full-res additive). Samples _CameraDepthTexture
+//              directly and additive-blends onto the camera color target. ~4×
+//              the per-pixel cost of half-res but no resolution-mismatch
+//              artefacts. Targets cinematic capture and high-perf desktops.
 Shader "Hidden/VRSL/VolumetricLighting"
 {
     SubShader
@@ -21,6 +26,7 @@ Shader "Hidden/VRSL/VolumetricLighting"
         HLSLINCLUDE
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/DeclareDepthTexture.hlsl"
+            #include "Shared/VRSLLightingLibrary.hlsl"
 
             struct Varyings
             {
@@ -40,6 +46,153 @@ Shader "Hidden/VRSL/VolumetricLighting"
             }
 
             SamplerState sampler_point_clamp;
+
+            // ── Raymarch globals (shared by half-res and full-res passes) ────
+            StructuredBuffer<VRSLLightData> _VRSLLights;
+            uint   _VRSLLightCount;
+
+            // x = step count, y = couple-to-scene-fog flag (0/1),
+            // w = HG anisotropy g
+            float4 _VRSLVolStepCount;
+            // x = base density, y = noise scale, z = noise scroll speed,
+            // w = noise strength (modulated variant only)
+            float4 _VRSLVolDensity;
+            // xyz = colour tint, w = global intensity multiplier
+            float4 _VRSLVolFogTint;
+
+            // R2 (plastic-constant) quasi-random sequence — gives a spatially
+            // uniform low-discrepancy distribution that reads perceptually as
+            // fine grain rather than the structured banding produced by
+            // interleaved gradient noise. The frame-indexed offset decorrelates
+            // the pattern across frames so head/fixture motion averages it out.
+            float VRSL_Jitter(float2 pixelCoord)
+            {
+                const float2 alpha = float2(0.7548776662, 0.5698402910);
+                float frameIdx = _Time.y * 60.0;
+                float2 p = pixelCoord * alpha + fmod(frameIdx, 64.0) * alpha;
+                return frac(p.x + p.y);
+            }
+
+        #ifdef _VRSL_VOLUMETRIC_NOISE
+            // Dave Hoskins-style 3D hash. ~6 ALU per call.
+            float VRSL_Hash3D(float3 p)
+            {
+                p = frac(p * float3(0.1031, 0.1030, 0.0973));
+                p += dot(p, p.yzx + 33.33);
+                return frac((p.x + p.y) * p.z);
+            }
+
+            // Smoothed 3D value noise on a unit grid. 8 hash taps + trilinear
+            // smoothstep interpolation — ~50 ALU per sample. Output range [0,1].
+            float VRSL_ValueNoise3D(float3 p)
+            {
+                float3 i = floor(p);
+                float3 f = frac(p);
+                f = f * f * (3.0 - 2.0 * f);
+
+                float n000 = VRSL_Hash3D(i);
+                float n100 = VRSL_Hash3D(i + float3(1, 0, 0));
+                float n010 = VRSL_Hash3D(i + float3(0, 1, 0));
+                float n110 = VRSL_Hash3D(i + float3(1, 1, 0));
+                float n001 = VRSL_Hash3D(i + float3(0, 0, 1));
+                float n101 = VRSL_Hash3D(i + float3(1, 0, 1));
+                float n011 = VRSL_Hash3D(i + float3(0, 1, 1));
+                float n111 = VRSL_Hash3D(i + float3(1, 1, 1));
+
+                float n00 = lerp(n000, n100, f.x);
+                float n10 = lerp(n010, n110, f.x);
+                float n01 = lerp(n001, n101, f.x);
+                float n11 = lerp(n011, n111, f.x);
+                float n0  = lerp(n00,  n10,  f.y);
+                float n1  = lerp(n01,  n11,  f.y);
+                return lerp(n0, n1, f.z);
+            }
+        #endif
+
+            // Shared raymarch — accumulate VRSL light in-scattering from the
+            // camera through the pixel out to rawDepth. Returns RGB radiance
+            // with alpha = 0 (so half-res mode can write into a fresh RT and
+            // full-res mode can additive-blend onto camera colour without
+            // disturbing the destination alpha).
+            float4 VRSL_Raymarch(float rawDepth, float2 uv, float2 pixelCS)
+            {
+            #if UNITY_REVERSED_Z
+                if (rawDepth < 0.0001) return 0;   // skybox / far plane
+            #else
+                if (rawDepth > 0.9999) return 0;
+            #endif
+
+                float3 surfaceWS = ComputeWorldSpacePosition(
+                    uv, rawDepth, UNITY_MATRIX_I_VP);
+                float3 cameraWS  = _WorldSpaceCameraPos.xyz;
+
+                float3 viewDelta = surfaceWS - cameraWS;
+                float  maxDist   = length(viewDelta);
+                float3 viewDir   = viewDelta / max(maxDist, 0.0001);
+                float3 toCamera  = -viewDir;
+
+                int   stepCount = max(1, (int)_VRSLVolStepCount.x);
+                float stepSize  = maxDist / stepCount;
+
+                float jitter   = VRSL_Jitter(pixelCS);
+                float density  = _VRSLVolDensity.x;
+                float3 tint    = _VRSLVolFogTint.xyz;
+                float anisotropy = _VRSLVolStepCount.w;
+
+                // Optional URP scene-fog coupling. unity_FogParams.x is the scene
+                // fog coefficient (≈ density / sqrt(ln 2) for Exp2 mode); folding
+                // it in lets a VolumeProfile globally drive shaft brightness, and
+                // disabling fog suppresses the volumetric entirely.
+                if (_VRSLVolStepCount.y > 0.5)
+                {
+                    density *= max(unity_FogParams.x, 0.0);
+                    tint    *= unity_FogColor.rgb;
+                }
+
+            #ifdef _VRSL_VOLUMETRIC_NOISE
+                float noiseScale    = _VRSLVolDensity.y;
+                float noiseScroll   = _VRSLVolDensity.z;
+                float noiseStrength = _VRSLVolDensity.w;
+            #endif
+
+                float3 accumulated = 0;
+
+                [loop]
+                for (int s = 0; s < stepCount; s++)
+                {
+                    float  t         = (s + jitter) * stepSize;
+                    float3 samplePos = cameraWS + viewDir * t;
+
+                    float3 inscatter = 0;
+                    for (uint li = 0; li < _VRSLLightCount; li++)
+                    {
+                        VRSLLightData light = _VRSLLights[li];
+                        float3 contrib = VRSL_EvaluateLightVolumetric(
+                            light, samplePos, toCamera, anisotropy);
+                        contrib *= SampleGobo(
+                            light.goboAndSpin.x, light.goboAndSpin.y,
+                            samplePos,
+                            light.positionAndRange.xyz,
+                            light.directionAndType.xyz,
+                            light.spotCosines.y);
+                        inscatter += contrib;
+                    }
+
+                #ifdef _VRSL_VOLUMETRIC_NOISE
+                    float3 noisePos = samplePos * noiseScale;
+                    noisePos.y -= _Time.y * noiseScroll;
+                    float n = VRSL_ValueNoise3D(noisePos);
+                    float modulation = lerp(1.0, n, noiseStrength);
+                #else
+                    float modulation = 1.0;
+                #endif
+
+                    accumulated += inscatter * density * modulation * stepSize;
+                }
+
+                float3 result = accumulated * tint * _VRSLVolFogTint.w;
+                return float4(result, 0);
+            }
         ENDHLSL
 
         // ── Pass 0 ───────────────────────────────────────────────────────────
@@ -94,94 +247,26 @@ Shader "Hidden/VRSL/VolumetricLighting"
             #pragma vertex   vert
             #pragma fragment frag
             #pragma target   4.5
+            #pragma multi_compile _ _VRSL_VOLUMETRIC_NOISE
 
-            #include "Shared/VRSLLightingLibrary.hlsl"
-
-            StructuredBuffer<VRSLLightData> _VRSLLights;
-            uint   _VRSLLightCount;
             Texture2D _VRSLVolHalfResDepth;
-
-            // x = step count, w = HG anisotropy g
-            float4 _VRSLVolStepCount;
-            // x = base density (manager-driven), other components reserved
-            float4 _VRSLVolDensity;
-            // xyz = colour tint, w = global intensity multiplier
-            float4 _VRSLVolFogTint;
-
-            // Hash-based interleaved gradient noise — bypasses any blue-noise
-            // texture asset dependency. Stable per-pixel, varies with frame
-            // index via fmod-time so successive frames decorrelate softly.
-            float VRSL_IGN(float2 pixelCoord)
-            {
-                return frac(52.9829189
-                          * frac(dot(pixelCoord, float2(0.06711056, 0.00583715))));
-            }
 
             float4 frag(Varyings i) : SV_Target
             {
                 float rawDepth = _VRSLVolHalfResDepth.SampleLevel(
                     sampler_point_clamp, i.uv, 0).r;
-
-            #if UNITY_REVERSED_Z
-                if (rawDepth < 0.0001) return 0;   // skybox / far plane
-            #else
-                if (rawDepth > 0.9999) return 0;
-            #endif
-
-                float3 surfaceWS = ComputeWorldSpacePosition(
-                    i.uv, rawDepth, UNITY_MATRIX_I_VP);
-                float3 cameraWS  = _WorldSpaceCameraPos.xyz;
-
-                float3 viewDelta = surfaceWS - cameraWS;
-                float  maxDist   = length(viewDelta);
-                float3 viewDir   = viewDelta / max(maxDist, 0.0001);
-                float3 toCamera  = -viewDir;
-
-                int   stepCount = max(1, (int)_VRSLVolStepCount.x);
-                float stepSize  = maxDist / stepCount;
-
-                float jitter   = VRSL_IGN(i.positionCS.xy);
-                float density  = _VRSLVolDensity.x;
-                float anisotropy = _VRSLVolStepCount.w;
-
-                float3 accumulated = 0;
-
-                [loop]
-                for (int s = 0; s < stepCount; s++)
-                {
-                    float  t         = (s + jitter) * stepSize;
-                    float3 samplePos = cameraWS + viewDir * t;
-
-                    float3 inscatter = 0;
-                    for (uint li = 0; li < _VRSLLightCount; li++)
-                    {
-                        VRSLLightData light = _VRSLLights[li];
-                        float3 contrib = VRSL_EvaluateLightVolumetric(
-                            light, samplePos, toCamera, anisotropy);
-                        contrib *= SampleGobo(
-                            light.goboAndSpin.x, light.goboAndSpin.y,
-                            samplePos,
-                            light.positionAndRange.xyz,
-                            light.directionAndType.xyz,
-                            light.spotCosines.y);
-                        inscatter += contrib;
-                    }
-
-                    accumulated += inscatter * density * stepSize;
-                }
-
-                float3 result = accumulated * _VRSLVolFogTint.xyz * _VRSLVolFogTint.w;
-                return float4(result, 0);
+                return VRSL_Raymarch(rawDepth, i.uv, i.positionCS.xy);
             }
             ENDHLSL
         }
 
         // ── Pass 2 ───────────────────────────────────────────────────────────
-        // Bilateral upsample composite. For each full-res pixel: sample the four
-        // nearest half-res taps, weight bilinear × exp(-|depthDiff|), and add
-        // the weighted-average to the camera colour. Edge-aware reconstruction
-        // means a foreground silhouette doesn't fringe-bleed half-res values
-        // sampled from background neighbours.
+        // Bilateral upsample composite. For each full-res pixel: sample a 3×3
+        // neighbourhood of half-res taps, weight Gaussian × exp(-|depthDiff|),
+        // and add the weighted-average to the camera colour. The 9-tap footprint
+        // doubles as a low-pass filter that smooths the half-res raymarch
+        // jitter pattern; the bilateral term keeps foreground silhouettes from
+        // fringe-bleeding half-res values sampled from background neighbours.
         Pass
         {
             Name "VRSL_Vol_Upsample"
@@ -211,23 +296,21 @@ Shader "Hidden/VRSL/VolumetricLighting"
                 _VRSLVolHalfResDepth.GetDimensions(hw, hh);
                 float2 halfTexel = float2(1.0 / hw, 1.0 / hh);
 
-                // Pixel coordinate in half-res space (centres at integer + 0.5)
+                // Centre of the 3×3 half-res neighbourhood, snapped to texel.
                 float2 halfPos  = i.uv * float2(hw, hh);
-                float2 halfBase = floor(halfPos - 0.5) + 0.5;
-                float2 frac01   = halfPos - halfBase;
-                float2 baseUV   = halfBase * halfTexel;
+                float2 halfCtr  = floor(halfPos) + 0.5;
+                float2 ctrUV    = halfCtr * halfTexel;
 
-                float bilinearW[4] = {
-                    (1.0 - frac01.x) * (1.0 - frac01.y),
-                    frac01.x         * (1.0 - frac01.y),
-                    (1.0 - frac01.x) * frac01.y,
-                    frac01.x         * frac01.y
+                // 3×3 Gaussian kernel (1,2,1; 2,4,2; 1,2,1) / 16.
+                const float gauss[9] = {
+                    1.0/16.0, 2.0/16.0, 1.0/16.0,
+                    2.0/16.0, 4.0/16.0, 2.0/16.0,
+                    1.0/16.0, 2.0/16.0, 1.0/16.0
                 };
-                float2 offs[4] = {
-                    float2(0, 0),
-                    float2(halfTexel.x, 0),
-                    float2(0, halfTexel.y),
-                    halfTexel
+                const float2 offs[9] = {
+                    float2(-1,-1), float2(0,-1), float2(1,-1),
+                    float2(-1, 0), float2(0, 0), float2(1, 0),
+                    float2(-1, 1), float2(0, 1), float2(1, 1)
                 };
 
                 float fullEye = LinearEyeDepth(fullDepth, _ZBufferParams);
@@ -236,21 +319,50 @@ Shader "Hidden/VRSL/VolumetricLighting"
                 float  wSum = 0;
 
                 [unroll]
-                for (int j = 0; j < 4; j++)
+                for (int j = 0; j < 9; j++)
                 {
-                    float2 uv = baseUV + offs[j];
+                    float2 uv = ctrUV + offs[j] * halfTexel;
                     float halfDepth = _VRSLVolHalfResDepth.SampleLevel(
                         sampler_point_clamp, uv, 0).r;
                     float halfEye  = LinearEyeDepth(halfDepth, _ZBufferParams);
                     float depthDiff = abs(fullEye - halfEye);
                     float bilateral = 1.0 / (0.0001 + depthDiff);
-                    float w = bilinearW[j] * bilateral;
+                    float w = gauss[j] * bilateral;
                     sum  += _VRSLVolumetricRT.SampleLevel(
                         sampler_point_clamp, uv, 0) * w;
                     wSum += w;
                 }
 
                 return sum / max(wSum, 0.0001);
+            }
+            ENDHLSL
+        }
+
+        // ── Pass 3 ───────────────────────────────────────────────────────────
+        // Full-resolution raymarch with additive blend onto the camera colour
+        // target. Samples _CameraDepthTexture directly so no half-res depth
+        // downsample or bilateral upsample is needed — the half-res pipeline's
+        // pass 0 and pass 2 are skipped in full-res mode. Cost is roughly 4×
+        // per-pixel vs the half-res path; chosen by the manager's
+        // VolumetricResolution setting.
+        Pass
+        {
+            Name "VRSL_Vol_RaymarchFullRes"
+            Blend One One
+            ZWrite Off
+            ZTest  Off
+            Cull   Off
+
+            HLSLPROGRAM
+            #pragma vertex   vert
+            #pragma fragment frag
+            #pragma target   4.5
+            #pragma multi_compile _ _VRSL_VOLUMETRIC_NOISE
+
+            float4 frag(Varyings i) : SV_Target
+            {
+                float rawDepth = SampleSceneDepth(i.uv);
+                return VRSL_Raymarch(rawDepth, i.uv, i.positionCS.xy);
             }
             ENDHLSL
         }

@@ -3,14 +3,14 @@ using UnityEngine;
 namespace VRSL
 {
     /// <summary>
-    /// Per-fixture config component for the VRSL DMX GPU realtime light path.
+    /// Per-fixture config component for the VRSL DMX URP realtime light path.
     ///
     /// Attach to each fixture that should contribute scene illumination driven by DMX.
-    /// VRSL_GPULightManager collects these components, uploads their config to a GPU
+    /// VRSL_URPLightManager collects these components, uploads their config to a GPU
     /// StructuredBuffer once (and again on change), then a compute shader decodes DMX
     /// channel data each frame and a fullscreen additive pass renders the lighting.
     ///
-    /// This component is the sole authoring surface on GPU-only fixture prefabs —
+    /// This component is the sole authoring surface on URP-only fixture prefabs —
     /// no VRStageLighting_DMX_Static sibling participates. The legacy DMX Static
     /// component remains the authoring surface for VRChat / mobile / Built-in-RP
     /// fixture prefabs, which use a different rendering path entirely.
@@ -87,6 +87,15 @@ namespace VRSL
         [Tooltip("Light attenuation range. Increase for larger spaces.")]
         public float range = 20f;
 
+        [Range(0f, 2f)]
+        [Tooltip("Distance in metres from the fixture's lens back to the conceptual cone apex. "
+               + "0 (default) treats the light as a point source — the cone tapers to zero at "
+               + "the fixture position. A non-zero value pushes the apex behind the fixture so "
+               + "the cone has finite width = emitterDepth × tan(halfAngle) at the lens, which "
+               + "matches wide-aperture fixtures like LED bars and washes. Tune so the visible "
+               + "beam width at the lens matches the fixture's emitting surface.")]
+        public float emitterDepth = 0f;
+
         [Tooltip("Emit as a point light instead of a spot.")]
         public bool isPointLight = false;
 
@@ -137,7 +146,7 @@ namespace VRSL
         [Tooltip("MeshRenderers on the fixture body that should react to this fixture's "
                + "DMX state (lit lamp lens, status indicators, etc.). When a sibling "
                + "VRStageLighting_DMX_Static is present it owns these renderers — leave "
-               + "this list empty in that case. On GPU-only prefabs without a Static "
+               + "this list empty in that case. On URP-only prefabs without a Static "
                + "sibling, populate with the fixture body's MeshRenderer(s) so the lens "
                + "still lights up under DMX without the legacy Static component.")]
         public MeshRenderer[] fixtureShellRenderers;
@@ -170,7 +179,7 @@ namespace VRSL
         //
         // Skipped when a sibling VRStageLighting_DMX_Static is present — Static
         // is the authoritative driver in that case and pushes its own (richer)
-        // set of properties. This component takes over only on GPU-only prefab
+        // set of properties. This component takes over only on URP-only prefab
         // variants that have intentionally dropped the Static sibling.
         // ──────────────────────────────────────────────────────────────────────────
         public void DriveFixtureShells()
@@ -183,7 +192,7 @@ namespace VRSL
             // _UpdateInstancedProperties() so the same body shader works under either
             // driver. Fields with no equivalent on this component use sensible
             // defaults (no NineUniverse, no legacy gobo range, no global brightness
-            // override, no cone-mesh tuning since GPU prefabs drop the cone mesh).
+            // override, no cone-mesh tuning since URP prefabs drop the cone mesh).
             _shellProps.SetInt(  "_DMXChannel",          _absChannel);
             _shellProps.SetInt(  "_NineUniverseMode",    0);
             _shellProps.SetInt(  "_PanInvert",           invertPan          ? 1 : 0);
@@ -211,7 +220,7 @@ namespace VRSL
         }
 
         // Matches RawDMXConversion() / SectorConversion() in VRStageLighting_DMX_Static
-        // so the GPU path resolves the same absolute channel index that the legacy
+        // so the URP path resolves the same absolute channel index that the legacy
         // shader path would for the same addressing inputs.
         public int ComputeAbsoluteChannel()
         {

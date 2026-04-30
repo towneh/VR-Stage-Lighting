@@ -136,8 +136,13 @@ void UpdateLights(uint3 id : SV_DispatchThreadID)
     int    lightType = (int)round(cfg.forwardAndType.w);
 
     // ── Spot cosines ──────────────────────────────────────────────────────────
-    float innerCos = cos(radians(cfg.spotAngles.x));
-    float outerCos = cos(radians(cfg.spotAngles.y));
+    // spotAngles.x = inner-to-outer ratio (0..1) — applied against the outer
+    // half-angle so the inner cone stays consistent if outer angle is ever
+    // animated. spotAngles.z = emitter depth (m) for virtual cone-apex pushback.
+    float outerHalf = cfg.spotAngles.y;
+    float innerHalf = outerHalf * cfg.spotAngles.x;
+    float innerCos  = cos(radians(innerHalf));
+    float outerCos  = cos(radians(outerHalf));
 
     // ── Write output ──────────────────────────────────────────────────────────
     VRSLLightData light;
@@ -146,7 +151,7 @@ void UpdateLights(uint3 id : SV_DispatchThreadID)
     light.colorAndIntensity = float4(color, combinedIntensity);
     light.spotCosines       = float4(innerCos, outerCos,
                                      combinedIntensity > 0.001 ? 1.0 : 0.0,
-                                     0.0);
+                                     cfg.spotAngles.z);
     // Gobo spin phase (radians), integrated from the Static's spinSpeed.
     // Scale factor π/9 (2× the projection shader's projected-gobo rate) is an
     // empirical match to the volumetric cone's visible stripe-pattern rotation,

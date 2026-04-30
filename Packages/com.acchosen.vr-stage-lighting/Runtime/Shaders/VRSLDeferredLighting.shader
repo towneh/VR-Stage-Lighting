@@ -1,7 +1,7 @@
-// Fullscreen additive lighting pass for VRSL GPU realtime lights.
+// Fullscreen additive lighting pass for VRSL URP realtime lights.
 // Runs after URP opaque rendering. Reconstructs world-space position from depth
 // and normals from _CameraNormalsTexture (requires Depth Normals Prepass enabled
-// in the URP Renderer asset), then evaluates each GPU-driven VRSL light.
+// in the URP Renderer asset), then evaluates each VRSL light.
 Shader "Hidden/VRSL/DeferredLighting"
 {
     SubShader

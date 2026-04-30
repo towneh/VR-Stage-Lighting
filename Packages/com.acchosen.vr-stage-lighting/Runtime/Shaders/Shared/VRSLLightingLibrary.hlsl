@@ -4,7 +4,7 @@
 #define VRSL_PI 3.14159265359
 
 // ──────────────────────────────────────────────────────────────────────────────
-// GPU data layout — must exactly match the C# structs in VRSL_GPULightManager.cs
+// GPU data layout — must exactly match the C# structs in VRSL_URPLightManager.cs
 // ──────────────────────────────────────────────────────────────────────────────
 
 // Per-fixture static configuration (CPU → GPU once, or on change)
@@ -13,14 +13,15 @@ struct VRSLFixtureConfig
     float4 positionAndRange;    // xyz = world position,  w = attenuation range
     float4 forwardAndType;      // xyz = base forward dir, w = light type (0=spot, 1=point)
     float4 rightAndMaxIntensity;// xyz = local +X in world space (tilt rotation axis), w = max intensity scalar
-    float4 spotAngles;          // x = inner half-angle (deg), y = max outer half-angle (deg),
-                                // z = finalIntensity cap,    w = min outer half-angle (deg)
+    float4 spotAngles;          // x = inner-to-outer ratio (0..1), y = max outer half-angle (deg),
+                                // z = finalIntensity cap,          w = min outer half-angle (deg)
     float4 dmxChannel;          // x = absolute DMX channel, y = enableStrobe,
                                 // z = enablePanTilt, w = enableFineChannels
     float4 panSettings;         // x = maxMinPan (deg), y = panOffset (deg),
                                 // z = invertPan (0/1), w = enableGoboSpin (0/1)
     float4 tiltSettings;        // x = maxMinTilt (deg), y = tiltOffset (deg),
                                 // z = invertTilt (0/1), w = enableGobo (0/1)
+    float4 extras;              // x = emitterDepth (m), yzw = reserved
 };
 
 // Per-fixture light state computed by the compute shader every frame
@@ -30,7 +31,8 @@ struct VRSLLightData
     float4 directionAndType;    // xyz = normalised direction (spot), w = type (0=spot,1=point)
     float4 colorAndIntensity;   // xyz = linear RGB, w = combined intensity
     float4 spotCosines;         // x = cos(inner half-angle), y = cos(outer half-angle),
-                                // z = active flag (0 = skip this light), w = unused
+                                // z = active flag (0 = skip this light),
+                                // w = emitterDepth (m) — virtual cone-apex pushback for area-emitter fixtures
     float4 goboAndSpin;         // x = gobo array index (-1 = no gobo, 0+ = slice in _VRSLGobos),
                                 // y = gobo spin speed (bipolar: 0 = no spin, negative = CCW, positive = CW, ±10 max),
                                 // zw = unused
@@ -49,10 +51,16 @@ float VRSL_DistanceAttenuation(float distSq, float range)
     return (f * f) / max(distSq, 0.0001);
 }
 
-// Spot cone attenuation — matches URP's GetAngleAttenuation
-float VRSL_SpotAttenuation(float3 lightDir, float3 toLight, float cosInner, float cosOuter)
+// Spot cone attenuation — matches URP's GetAngleAttenuation, with an optional
+// virtual-apex offset for area-emitter fixtures. emitterDepth pushes the cone's
+// conceptual apex back along lightDir by that distance, so at the light's actual
+// position the cone has finite radius = emitterDepth × tan(halfAngle) instead of
+// converging to a point. emitterDepth = 0 reproduces the point-source behaviour.
+float VRSL_SpotAttenuation(float3 lightDir, float3 toLight, float cosInner,
+                           float cosOuter, float emitterDepth)
 {
-    float cosAngle = dot(-lightDir, normalize(toLight));
+    float3 toApex = toLight - lightDir * emitterDepth;
+    float cosAngle = dot(-lightDir, normalize(toApex));
     float t = saturate((cosAngle - cosOuter) / max(cosInner - cosOuter, 0.0001));
     return t * t;
 }
@@ -72,7 +80,8 @@ float3 VRSL_EvaluateLight(VRSLLightData light, float3 posWS, float3 normalWS)
     if (light.directionAndType.w < 0.5)
         spotAtten = VRSL_SpotAttenuation(
             light.directionAndType.xyz, toLight,
-            light.spotCosines.x, light.spotCosines.y);
+            light.spotCosines.x, light.spotCosines.y,
+            light.spotCosines.w);
 
     float NdotL = max(0.0, dot(normalWS, normalize(toLight)));
 
@@ -115,7 +124,8 @@ float3 VRSL_EvaluateLightVolumetric(VRSLLightData light, float3 samplePos,
     if (light.directionAndType.w < 0.5)
         spotAtten = VRSL_SpotAttenuation(
             light.directionAndType.xyz, toLight,
-            light.spotCosines.x, light.spotCosines.y);
+            light.spotCosines.x, light.spotCosines.y,
+            light.spotCosines.w);
     if (spotAtten < 0.0001) return 0;
 
     // Phase: angle between the view ray (toward camera) and the direction
@@ -176,8 +186,8 @@ float SampleGobo(float goboIdx, float spinAngle, float3 posWS,
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
-// AudioLink GPU light path — per-fixture config written by VRSL_AudioLinkGPULightManager
-// Must exactly match VRSLALFixtureConfig in VRSL_AudioLinkGPULightManager.cs
+// URP AudioLink light path — per-fixture config written by VRSL_AudioLinkURPLightManager
+// Must exactly match VRSLALFixtureConfig in VRSL_AudioLinkURPLightManager.cs
 // ──────────────────────────────────────────────────────────────────────────────
 struct VRSLALFixtureConfig
 {
@@ -186,8 +196,8 @@ struct VRSLALFixtureConfig
                               // w = light type (0=spot, 1=point)
     float4 intensityParams;   // x = maxIntensity, y = finalIntensity,
                               // z = AudioLink active (1=sample AL, 0=static full intensity), w = unused
-    float4 spotAngles;        // x = inner half-angle (deg), y = outer half-angle (deg),
-                              // z = unused, w = unused
+    float4 spotAngles;        // x = inner-to-outer ratio (0..1), y = outer half-angle (deg),
+                              // z = emitterDepth (m), w = unused
     float4 alParams;          // x = band (0–3), y = delay (0–127), z = bandMultiplier,
                               // w = colorMode (0=emission, 1–4=theme0–3, 5=colorChord,
                               //                6=colorTexture (HSV-normalised),

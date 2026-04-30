@@ -337,7 +337,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 5384404988785822384, guid: a7e2858f5c4999a46984c33b8d6c08e4, type: 3}
       propertyPath: m_Name
-      value: VRSL-DMX-GPU-LightManager-Vertical
+      value: VRSL-DMX-URP-LightManager-Vertical
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
@@ -354,7 +354,7 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 55459345164755568, guid: 08b333f707ccb3f4889afbfad7df5b8d, type: 3}
       propertyPath: m_Name
-      value: VRSL-DMX-Mover-WashLight-V-13CH-GPU (Sector 23)
+      value: VRSL-DMX-Mover-WashLight-V-13CH-URP (Sector 23)
       objectReference: {fileID: 0}
     - target: {fileID: 6181930292573285797, guid: 08b333f707ccb3f4889afbfad7df5b8d, type: 3}
       propertyPath: useLegacySectorMode
@@ -496,7 +496,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 7995221923457611169, guid: 5d1066e4c29c65e4bb4ac2d3212d8166, type: 3}
       propertyPath: m_Name
-      value: VRSL-DMX-Static-ParLight-V-13CH-GPU (Sector 6)
+      value: VRSL-DMX-Static-ParLight-V-13CH-URP (Sector 6)
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
@@ -530,7 +530,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3459418684809732186, guid: 8148e766f3c7aac4c90b95dd72c445bf, type: 3}
       propertyPath: m_Name
-      value: VRSL-DMX-Static-Blinder-V-13CH-GPU (Sector 13)
+      value: VRSL-DMX-Static-Blinder-V-13CH-URP (Sector 13)
       objectReference: {fileID: 0}
     - target: {fileID: 8866041808829946479, guid: 8148e766f3c7aac4c90b95dd72c445bf, type: 3}
       propertyPath: m_LocalPosition.x
@@ -644,7 +644,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 7995221923457611169, guid: 5d1066e4c29c65e4bb4ac2d3212d8166, type: 3}
       propertyPath: m_Name
-      value: VRSL-DMX-Static-ParLight-V-13CH-GPU (Sector 5)
+      value: VRSL-DMX-Static-ParLight-V-13CH-URP (Sector 5)
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
@@ -860,7 +860,7 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 5406409379436373159, guid: 7966e58dceadcf542868a58c59869f78, type: 3}
       propertyPath: m_Name
-      value: VRSL-DMX-Mover-Spotlight-V-13CH-GPU (Sector 0)
+      value: VRSL-DMX-Mover-Spotlight-V-13CH-URP (Sector 0)
       objectReference: {fileID: 0}
     - target: {fileID: 6142306186151546098, guid: 7966e58dceadcf542868a58c59869f78, type: 3}
       propertyPath: fixtureID
@@ -1035,7 +1035,7 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 5406409379436373159, guid: 7966e58dceadcf542868a58c59869f78, type: 3}
       propertyPath: m_Name
-      value: VRSL-DMX-Mover-Spotlight-V-13CH-GPU (Sector 2 Invert)
+      value: VRSL-DMX-Mover-Spotlight-V-13CH-URP (Sector 2 Invert)
       objectReference: {fileID: 0}
     - target: {fileID: 6142306186151546098, guid: 7966e58dceadcf542868a58c59869f78, type: 3}
       propertyPath: sector
@@ -1129,7 +1129,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3459418684809732186, guid: 8148e766f3c7aac4c90b95dd72c445bf, type: 3}
       propertyPath: m_Name
-      value: VRSL-DMX-Static-Blinder-V-13CH-GPU (Sector 14)
+      value: VRSL-DMX-Static-Blinder-V-13CH-URP (Sector 14)
       objectReference: {fileID: 0}
     - target: {fileID: 8866041808829946479, guid: 8148e766f3c7aac4c90b95dd72c445bf, type: 3}
       propertyPath: m_LocalPosition.x
@@ -1343,7 +1343,7 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 5406409379436373159, guid: 7966e58dceadcf542868a58c59869f78, type: 3}
       propertyPath: m_Name
-      value: VRSL-DMX-Mover-Spotlight-V-13CH-GPU (Sector 3)
+      value: VRSL-DMX-Mover-Spotlight-V-13CH-URP (Sector 3)
       objectReference: {fileID: 0}
     - target: {fileID: 6142306186151546098, guid: 7966e58dceadcf542868a58c59869f78, type: 3}
       propertyPath: sector
@@ -1519,7 +1519,7 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 5406409379436373159, guid: 7966e58dceadcf542868a58c59869f78, type: 3}
       propertyPath: m_Name
-      value: VRSL-DMX-Mover-Spotlight-V-13CH-GPU (Sector 3 Invert)
+      value: VRSL-DMX-Mover-Spotlight-V-13CH-URP (Sector 3 Invert)
       objectReference: {fileID: 0}
     - target: {fileID: 6142306186151546098, guid: 7966e58dceadcf542868a58c59869f78, type: 3}
       propertyPath: sector
@@ -1653,7 +1653,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 7995221923457611169, guid: 5d1066e4c29c65e4bb4ac2d3212d8166, type: 3}
       propertyPath: m_Name
-      value: VRSL-DMX-Static-ParLight-V-13CH-GPU (Sector 6 Alt)
+      value: VRSL-DMX-Static-ParLight-V-13CH-URP (Sector 6 Alt)
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
@@ -1799,7 +1799,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3459418684809732186, guid: 8148e766f3c7aac4c90b95dd72c445bf, type: 3}
       propertyPath: m_Name
-      value: VRSL-DMX-Static-Blinder-V-13CH-GPU (Sector 15)
+      value: VRSL-DMX-Static-Blinder-V-13CH-URP (Sector 15)
       objectReference: {fileID: 0}
     - target: {fileID: 8866041808829946479, guid: 8148e766f3c7aac4c90b95dd72c445bf, type: 3}
       propertyPath: m_LocalPosition.x
@@ -2109,7 +2109,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 7995221923457611169, guid: 5d1066e4c29c65e4bb4ac2d3212d8166, type: 3}
       propertyPath: m_Name
-      value: VRSL-DMX-Static-ParLight-V-13CH-GPU (Sector 5 Alt)
+      value: VRSL-DMX-Static-ParLight-V-13CH-URP (Sector 5 Alt)
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
@@ -2131,7 +2131,7 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 55459345164755568, guid: 08b333f707ccb3f4889afbfad7df5b8d, type: 3}
       propertyPath: m_Name
-      value: VRSL-DMX-Mover-WashLight-V-13CH-GPU (Sector 8)
+      value: VRSL-DMX-Mover-WashLight-V-13CH-URP (Sector 8)
       objectReference: {fileID: 0}
     - target: {fileID: 8178101739441904984, guid: 08b333f707ccb3f4889afbfad7df5b8d, type: 3}
       propertyPath: m_LocalScale.x
@@ -2217,7 +2217,7 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 5406409379436373159, guid: 7966e58dceadcf542868a58c59869f78, type: 3}
       propertyPath: m_Name
-      value: VRSL-DMX-Mover-Spotlight-V-13CH-GPU (Sector 2)
+      value: VRSL-DMX-Mover-Spotlight-V-13CH-URP (Sector 2)
       objectReference: {fileID: 0}
     - target: {fileID: 6142306186151546098, guid: 7966e58dceadcf542868a58c59869f78, type: 3}
       propertyPath: sector
@@ -2819,7 +2819,7 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 5406409379436373159, guid: 7966e58dceadcf542868a58c59869f78, type: 3}
       propertyPath: m_Name
-      value: VRSL-DMX-Mover-Spotlight-V-13CH-GPU (Sector 0 Invert)
+      value: VRSL-DMX-Mover-Spotlight-V-13CH-URP (Sector 0 Invert)
       objectReference: {fileID: 0}
     - target: {fileID: 6142306186151546098, guid: 7966e58dceadcf542868a58c59869f78, type: 3}
       propertyPath: fixtureID
@@ -2953,7 +2953,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 7995221923457611169, guid: 5d1066e4c29c65e4bb4ac2d3212d8166, type: 3}
       propertyPath: m_Name
-      value: VRSL-DMX-Static-ParLight-V-13CH-GPU (Sector 4 Alt)
+      value: VRSL-DMX-Static-ParLight-V-13CH-URP (Sector 4 Alt)
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
@@ -3717,7 +3717,7 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 5406409379436373159, guid: 7966e58dceadcf542868a58c59869f78, type: 3}
       propertyPath: m_Name
-      value: VRSL-DMX-Mover-Spotlight-V-13CH-GPU (Sector 1 Invert)
+      value: VRSL-DMX-Mover-Spotlight-V-13CH-URP (Sector 1 Invert)
       objectReference: {fileID: 0}
     - target: {fileID: 6142306186151546098, guid: 7966e58dceadcf542868a58c59869f78, type: 3}
       propertyPath: sector
@@ -3855,7 +3855,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 7995221923457611169, guid: 5d1066e4c29c65e4bb4ac2d3212d8166, type: 3}
       propertyPath: m_Name
-      value: VRSL-DMX-Static-ParLight-V-13CH-GPU (Sector 4)
+      value: VRSL-DMX-Static-ParLight-V-13CH-URP (Sector 4)
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
@@ -4443,7 +4443,7 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 55459345164755568, guid: 08b333f707ccb3f4889afbfad7df5b8d, type: 3}
       propertyPath: m_Name
-      value: VRSL-DMX-Mover-WashLight-V-13CH-GPU (Sector 8 Invert)
+      value: VRSL-DMX-Mover-WashLight-V-13CH-URP (Sector 8 Invert)
       objectReference: {fileID: 0}
     - target: {fileID: 6181930292573285797, guid: 08b333f707ccb3f4889afbfad7df5b8d, type: 3}
       propertyPath: invertPan
@@ -4694,7 +4694,7 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 5406409379436373159, guid: 7966e58dceadcf542868a58c59869f78, type: 3}
       propertyPath: m_Name
-      value: VRSL-DMX-Mover-Spotlight-V-13CH-GPU (Sector 1)
+      value: VRSL-DMX-Mover-Spotlight-V-13CH-URP (Sector 1)
       objectReference: {fileID: 0}
     - target: {fileID: 6142306186151546098, guid: 7966e58dceadcf542868a58c59869f78, type: 3}
       propertyPath: sector

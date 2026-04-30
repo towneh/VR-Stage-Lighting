@@ -2,7 +2,7 @@
 
 #include "../Shared/VRSLLightingLibrary.hlsl"
 
-// ── DMX source textures (set by VRSL_GPULightManager) ────────────────────────
+// ── DMX source textures (set by VRSL_URPLightManager) ────────────────────────
 Texture2D<float4> _DMXMainTex;
 Texture2D<float4> _DMXMovementTex;
 Texture2D<float4> _DMXStrobeTex;
@@ -143,19 +143,21 @@ void UpdateLights(uint3 id : SV_DispatchThreadID)
 
         // Matches the volumetric shader: tilt around the fixture's local +X in world
         // space first, then pan around baseForward (object Z). Both axes are supplied
-        // from CPU because this kernel has no ObjectToWorld matrix — hardcoding world
-        // +X only works for fixtures whose local X already aligns with world X, which
-        // is why yawed fixtures (e.g. 180° around (0,-1,1)) previously mis-rotated.
+        // from CPU because this kernel has no ObjectToWorld matrix; the supplied axis
+        // keeps yawed fixtures (whose local X does not align with world X) rotating
+        // about the correct pivot.
         float3 baseRight     = cfg.rightAndMaxIntensity.xyz;
         float3 tiltedForward = RotateAroundAxis(baseForward,   baseRight,   tiltDeg);
         finalDir             = RotateAroundAxis(tiltedForward, baseForward, panDeg);
     }
 
     // ── Cone width — ch+4 (motor speed / zoom), matches getDMXConeWidth() ────
-    // spotAngles.y = max outer half-angle, spotAngles.w = min outer half-angle.
-    float coneRaw  = GetDMXValue(absChannel + 4, _DMXMainTex);
+    // spotAngles.x = inner-to-outer ratio (0..1), spotAngles.y = max outer half-angle,
+    // spotAngles.w = min outer half-angle. The inner cone tracks the dynamic outer
+    // angle so wash movers stay flat-bright across the cone even as ch+4 zooms it.
+    float coneRaw   = GetDMXValue(absChannel + 4, _DMXMainTex);
     float outerHalf = lerp(cfg.spotAngles.w, cfg.spotAngles.y, coneRaw);
-    float innerHalf = outerHalf * 0.5;
+    float innerHalf = outerHalf * cfg.spotAngles.x;
 
     // ── Spot angle cosines ────────────────────────────────────────────────────
     float innerCos = cos(radians(innerHalf));
@@ -166,9 +168,11 @@ void UpdateLights(uint3 id : SV_DispatchThreadID)
     light.positionAndRange  = float4(cfg.positionAndRange.xyz, cfg.positionAndRange.w);
     light.directionAndType  = float4(normalize(finalDir), cfg.forwardAndType.w);
     light.colorAndIntensity = float4(r, g, b, combinedIntensity);
-    // z = active flag: skip entirely if intensity is negligible
+    // z = active flag: skip if intensity is negligible.
+    // w = emitter depth (m) — virtual cone-apex pushback for area-emitter fixtures.
     light.spotCosines       = float4(innerCos, outerCos,
-                                     combinedIntensity > 0.001 ? 1.0 : 0.0, 0.0);
+                                     combinedIntensity > 0.001 ? 1.0 : 0.0,
+                                     cfg.extras.x);
     // ── Gobo (ch+10 spin speed, ch+11 gobo select) ───────────────────────────
     // Mirrors getDMXGoboSelection() in VRSL-DMXFunctions: round(raw*255/30), clamp 1..N
     bool  enableGoboSpin = cfg.panSettings.w > 0.5;

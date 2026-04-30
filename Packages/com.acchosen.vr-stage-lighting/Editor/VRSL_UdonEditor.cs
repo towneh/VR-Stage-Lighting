@@ -34,7 +34,7 @@ namespace VRSL.EditorScripts
         public void OnEnable() { }
 
         // Thin shims around VRSL_EditorHeader so the DMX/AudioLink Static editors
-        // and the GPU realtime-light editors share one source of truth for the
+        // and the URP realtime-light editors share one source of truth for the
         // header look. Kept public/static at the same names so existing call
         // sites elsewhere in this file still resolve.
         public static string GetVersion()              => VRSL_EditorHeader.GetVersionString();

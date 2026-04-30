@@ -9,18 +9,18 @@ using VRC.Udon;
 namespace VRSL
 {
     /// <summary>
-    /// Per-fixture config component for the AudioLink GPU realtime light path.
+    /// Per-fixture config component for the AudioLink URP realtime light path.
     ///
     /// Attach this alongside a Unity Light component on each fixture that should
     /// contribute genuine scene illumination driven by AudioLink amplitude and color data.
-    /// This component is the sole authoring surface on GPU-only fixture prefabs —
+    /// This component is the sole authoring surface on URP-only fixture prefabs —
     /// no VRStageLighting_AudioLink_Static sibling participates. The legacy
     /// AudioLink Static component remains the authoring surface for VRChat / mobile /
     /// Built-in-RP fixture prefabs, which use a different rendering path entirely.
     ///
     /// For moving-head fixtures: assign panTransform and tiltTransform.
-    /// VRSL_AudioLinkGPULightManager reads their world-space transforms every frame,
-    /// so animations driving the pan/tilt hierarchy automatically drive the GPU light direction.
+    /// VRSL_AudioLinkURPLightManager reads their world-space transforms every frame,
+    /// so animations driving the pan/tilt hierarchy automatically drive the light direction.
     /// </summary>
 #if UDONSHARP
     [UdonBehaviourSyncMode(BehaviourSyncMode.None)]
@@ -85,6 +85,15 @@ namespace VRSL
         [Tooltip("Light attenuation range. Increase for larger spaces.")]
         public float range = 20f;
 
+        [Range(0f, 2f)]
+        [Tooltip("Distance in metres from the fixture's lens back to the conceptual cone apex. "
+               + "0 (default) treats the light as a point source — the cone tapers to zero at "
+               + "the fixture position. A non-zero value pushes the apex behind the fixture so "
+               + "the cone has finite width = emitterDepth × tan(halfAngle) at the lens, which "
+               + "matches wide-aperture fixtures like LED bars and washes. Tune so the visible "
+               + "beam width at the lens matches the fixture's emitting surface.")]
+        public float emitterDepth = 0f;
+
         [Tooltip("Emit as a point light instead of a spot.")]
         public bool isPointLight = false;
 
@@ -128,7 +137,7 @@ namespace VRSL
         [Tooltip("MeshRenderers on the fixture body that should react to AudioLink (lit "
                + "lamp lens, status indicators, etc.). When a sibling "
                + "VRStageLighting_AudioLink_Static is present it owns these renderers — "
-               + "leave this list empty in that case. On GPU-only prefabs without a "
+               + "leave this list empty in that case. On URP-only prefabs without a "
                + "Static sibling, populate with the fixture body's MeshRenderer(s) so "
                + "the lens still reacts under AudioLink without the legacy Static.")]
         public MeshRenderer[] fixtureShellRenderers;
@@ -161,7 +170,7 @@ namespace VRSL
 
         // Pushes a MaterialPropertyBlock to the body MeshRenderers so the legacy
         // fixture-mesh shader (which samples AudioLink data via material properties)
-        // sees the right per-instance configuration. Used on GPU-only prefab
+        // sees the right per-instance configuration. Used on URP-only prefab
         // variants where this component is the sole authoring surface.
         public void DriveFixtureShells()
         {
