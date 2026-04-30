@@ -2,6 +2,7 @@ using System.Runtime.InteropServices;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Rendering;
+using UnityEngine.Rendering.Universal;
 
 namespace VRSL
 {
@@ -34,9 +35,10 @@ namespace VRSL
 
         [Header("Volumetric")]
         [Tooltip("Assign Hidden/VRSL/VolumetricLighting (the VRSLVolumetricLighting shader asset). "
-               + "The volumetric raymarch pass runs whenever this is assigned and the renderer "
-               + "feature is active — there is no separate enable toggle since the URP prefab "
-               + "path has no legacy mesh-cone shader to fall back to.")]
+               + "The volumetric raymarch pass runs whenever this is assigned — there is no "
+               + "separate enable toggle since the URP prefab path has no legacy mesh-cone "
+               + "shader to fall back to. To silence cones at runtime, drive volumetricIntensity "
+               + "to 0 instead.")]
         public Shader volumetricShader;
 
         [Tooltip("Render resolution for the raymarch. Half is half-res with bilateral upsample "
@@ -96,12 +98,21 @@ namespace VRSL
                + "1 = density drops to zero in the darkest patches.")]
         public float volumetricNoiseStrength = 0.7f;
 
+        [Header("Runtime Pass Injection")]
+        [Tooltip("Inject the URP render passes at runtime via RenderPipelineManager."
+               + "beginCameraRendering instead of relying on a VRSLAudioLinkRealtimeLightFeature "
+               + "entry on the URP renderer asset. This is the only viable path for VRChat "
+               + "worlds, where uploaders cannot modify the VRChat client's URP renderer "
+               + "asset. Disable only if you have explicitly added the feature to your "
+               + "renderer asset and want it to drive the passes instead.")]
+        public bool useRuntimePassInjection = true;
+
         [Header("Gobo Wheel")]
         [Tooltip("Gobo textures shared by all AudioLink fixtures. Packed into a Texture2DArray. "
                + "Each fixture selects a slot via its Gobo Index field. -1 = no gobo (open beam).")]
         public Texture2D[] goboTextures;
 
-        // ── Public API for the renderer feature ───────────────────────────────
+        // ── Public API for the render passes ──────────────────────────────────
         public GraphicsBuffer FixtureConfigBuffer { get; private set; }
         public GraphicsBuffer LightDataBuffer     { get; private set; }
         public RTHandle       AudioLinkHandle     { get; private set; }
@@ -150,6 +161,15 @@ namespace VRSL
         List<VRStageLighting_AudioLink_RealtimeLight> _fixtures = new();
         RenderTexture _cachedAudioTex;
 
+        // Runtime-injection state. Allocated in OnEnable when useRuntimePassInjection
+        // is true, reused across cameras and frames, dropped in OnDisable. Pass
+        // instances are stateless beyond renderPassEvent and ConfigureInput flags,
+        // so a single instance per pass type is correct even with multiple cameras.
+        VRSLAudioLinkRealtimeLightFeature.ComputePass    _computePass;
+        VRSLAudioLinkRealtimeLightFeature.LightingPass   _lightingPass;
+        VRSLAudioLinkRealtimeLightFeature.VolumetricPass _volumetricPass;
+        bool _injectionSubscribed;
+
         // ── Lifecycle ─────────────────────────────────────────────────────────
         void Awake()
         {
@@ -160,10 +180,12 @@ namespace VRSL
         void OnEnable()
         {
             RefreshFixtures();
+            if (useRuntimePassInjection) SubscribeRuntimeInjection();
         }
 
         void OnDisable()
         {
+            UnsubscribeRuntimeInjection();
             ReleaseBuffers();
             ReleaseAudioLinkHandle();
         }
@@ -335,6 +357,73 @@ namespace VRSL
             FixtureConfigBuffer?.Release(); FixtureConfigBuffer = null;
             LightDataBuffer?.Release();     LightDataBuffer     = null;
             if (GoboArray != null) { Object.Destroy(GoboArray); GoboArray = null; }
+        }
+
+        // ── Runtime pass injection ────────────────────────────────────────────
+        // Drives the URP render passes via RenderPipelineManager.beginCameraRendering
+        // so the package works in environments where users cannot author the URP
+        // renderer asset (notably: VRChat worlds, where the renderer is owned by
+        // the VRChat client). Pass instances are allocated once on enable and
+        // re-enqueued per camera each frame.
+        void SubscribeRuntimeInjection()
+        {
+            if (_injectionSubscribed) return;
+
+            _computePass ??= new VRSLAudioLinkRealtimeLightFeature.ComputePass
+            {
+                renderPassEvent = RenderPassEvent.BeforeRenderingOpaques,
+            };
+            _lightingPass ??= new VRSLAudioLinkRealtimeLightFeature.LightingPass
+            {
+                renderPassEvent = RenderPassEvent.AfterRenderingOpaques,
+            };
+            _volumetricPass ??= new VRSLAudioLinkRealtimeLightFeature.VolumetricPass
+            {
+                renderPassEvent = (RenderPassEvent)((int)RenderPassEvent.AfterRenderingOpaques + 1),
+            };
+
+            RenderPipelineManager.beginCameraRendering += OnBeginCameraRendering;
+            _injectionSubscribed = true;
+        }
+
+        void UnsubscribeRuntimeInjection()
+        {
+            if (!_injectionSubscribed) return;
+            RenderPipelineManager.beginCameraRendering -= OnBeginCameraRendering;
+            _injectionSubscribed = false;
+        }
+
+        void OnBeginCameraRendering(ScriptableRenderContext ctx, Camera cam)
+        {
+            if (cam == null) return;
+            // Reflection probes and editor preview cameras render through the same
+            // pipeline event but don't want stage-light passes — would cost dispatch
+            // and pollute reflection captures.
+            if (cam.cameraType == CameraType.Reflection
+             || cam.cameraType == CameraType.Preview) return;
+
+            var camData = cam.GetUniversalAdditionalCameraData();
+            if (camData == null) return;
+            var renderer = camData.scriptableRenderer;
+            if (renderer == null) return;
+
+            // ConfigureInput drives URP's depth-normals prepass scheduling. Calling
+            // it on the pass instance before EnqueuePass is the same contract the
+            // ScriptableRendererFeature path relied on — URP reads the input flags
+            // during enqueue.
+            _lightingPass.ConfigureInput(ScriptableRenderPassInput.Normal | ScriptableRenderPassInput.Depth);
+            _volumetricPass.ConfigureInput(ScriptableRenderPassInput.Depth);
+
+            // Texture2DArray (gobo wheel) is bound globally here rather than inside
+            // the render graph, which only accepts TextureHandle — same as the
+            // feature path.
+            if (GoboArray != null)
+                Shader.SetGlobalTexture("_VRSLGobos", GoboArray);
+
+            renderer.EnqueuePass(_computePass);
+            renderer.EnqueuePass(_lightingPass);
+            if (VolumetricMaterial != null)
+                renderer.EnqueuePass(_volumetricPass);
         }
 
 #if UNITY_EDITOR
