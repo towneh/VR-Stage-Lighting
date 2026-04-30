@@ -11,8 +11,11 @@ namespace VRSL
     ///
     /// Discovers every VRStageLighting_AudioLink_RealtimeLight in the scene,
     /// uploads their per-frame config (position, forward direction, AudioLink params)
-    /// to a GPU StructuredBuffer, and exposes the buffers and AudioLink RTHandle that
-    /// VRSLAudioLinkRealtimeLightFeature drives through the render graph.
+    /// to a GPU StructuredBuffer, and exposes the buffers and AudioLink RTHandle
+    /// that the VRSLAudioLinkLightPasses pass classes drive through the render
+    /// graph. The manager also subscribes to RenderPipelineManager.beginCameraRendering
+    /// and enqueues those passes per camera, so no ScriptableRendererFeature is
+    /// required on the URP Renderer asset.
     ///
     /// Unlike VRSL_URPLightManager (DMX path), the config buffer is re-uploaded every
     /// frame because pan/tilt transforms are animated and their world-space forward
@@ -98,15 +101,6 @@ namespace VRSL
                + "1 = density drops to zero in the darkest patches.")]
         public float volumetricNoiseStrength = 0.7f;
 
-        [Header("Runtime Pass Injection")]
-        [Tooltip("Inject the URP render passes at runtime via RenderPipelineManager."
-               + "beginCameraRendering instead of relying on a VRSLAudioLinkRealtimeLightFeature "
-               + "entry on the URP renderer asset. This is the only viable path for VRChat "
-               + "worlds, where uploaders cannot modify the VRChat client's URP renderer "
-               + "asset. Disable only if you have explicitly added the feature to your "
-               + "renderer asset and want it to drive the passes instead.")]
-        public bool useRuntimePassInjection = true;
-
         [Header("Gobo Wheel")]
         [Tooltip("Gobo textures shared by all AudioLink fixtures. Packed into a Texture2DArray. "
                + "Each fixture selects a slot via its Gobo Index field. -1 = no gobo (open beam).")]
@@ -161,13 +155,13 @@ namespace VRSL
         List<VRStageLighting_AudioLink_RealtimeLight> _fixtures = new();
         RenderTexture _cachedAudioTex;
 
-        // Runtime-injection state. Allocated in OnEnable when useRuntimePassInjection
-        // is true, reused across cameras and frames, dropped in OnDisable. Pass
-        // instances are stateless beyond renderPassEvent and ConfigureInput flags,
-        // so a single instance per pass type is correct even with multiple cameras.
-        VRSLAudioLinkRealtimeLightFeature.ComputePass    _computePass;
-        VRSLAudioLinkRealtimeLightFeature.LightingPass   _lightingPass;
-        VRSLAudioLinkRealtimeLightFeature.VolumetricPass _volumetricPass;
+        // Render-pass instances. Allocated in OnEnable, reused across cameras and
+        // frames, dropped in OnDisable. Stateless beyond renderPassEvent and
+        // ConfigureInput flags, so a single instance per pass type is correct
+        // even with multiple cameras.
+        VRSLAudioLinkLightPasses.ComputePass    _computePass;
+        VRSLAudioLinkLightPasses.LightingPass   _lightingPass;
+        VRSLAudioLinkLightPasses.VolumetricPass _volumetricPass;
         bool _injectionSubscribed;
 
         // ── Lifecycle ─────────────────────────────────────────────────────────
@@ -180,7 +174,7 @@ namespace VRSL
         void OnEnable()
         {
             RefreshFixtures();
-            if (useRuntimePassInjection) SubscribeRuntimeInjection();
+            SubscribeRuntimeInjection();
         }
 
         void OnDisable()
@@ -369,15 +363,15 @@ namespace VRSL
         {
             if (_injectionSubscribed) return;
 
-            _computePass ??= new VRSLAudioLinkRealtimeLightFeature.ComputePass
+            _computePass ??= new VRSLAudioLinkLightPasses.ComputePass
             {
                 renderPassEvent = RenderPassEvent.BeforeRenderingOpaques,
             };
-            _lightingPass ??= new VRSLAudioLinkRealtimeLightFeature.LightingPass
+            _lightingPass ??= new VRSLAudioLinkLightPasses.LightingPass
             {
                 renderPassEvent = RenderPassEvent.AfterRenderingOpaques,
             };
-            _volumetricPass ??= new VRSLAudioLinkRealtimeLightFeature.VolumetricPass
+            _volumetricPass ??= new VRSLAudioLinkLightPasses.VolumetricPass
             {
                 renderPassEvent = (RenderPassEvent)((int)RenderPassEvent.AfterRenderingOpaques + 1),
             };
@@ -407,10 +401,9 @@ namespace VRSL
             var renderer = camData.scriptableRenderer;
             if (renderer == null) return;
 
-            // ConfigureInput drives URP's depth-normals prepass scheduling. Calling
-            // it on the pass instance before EnqueuePass is the same contract the
-            // ScriptableRendererFeature path relied on — URP reads the input flags
-            // during enqueue.
+            // ConfigureInput drives URP's depth-normals prepass scheduling — URP
+            // reads the input flags on the pass during EnqueuePass and schedules
+            // the prepass automatically.
             _lightingPass.ConfigureInput(ScriptableRenderPassInput.Normal | ScriptableRenderPassInput.Depth);
             _volumetricPass.ConfigureInput(ScriptableRenderPassInput.Depth);
 

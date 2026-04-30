@@ -7,118 +7,88 @@ using UnityEngine.Rendering.RenderGraphModule;
 namespace VRSL
 {
     /// <summary>
-    /// Holds the three Render Graph pass classes that make up the VRSL URP DMX
-    /// realtime-light pipeline:
+    /// Holds the three Render Graph pass classes that make up the VRSL URP
+    /// AudioLink realtime-light pipeline:
     ///
-    ///   1. ComputePass — dispatches VRSLDMXLightUpdate.compute, which reads the
-    ///      three DMX RenderTextures and writes a VRSLLightData StructuredBuffer.
+    ///   1. ComputePass — dispatches VRSLAudioLinkLightUpdate.compute, samples the
+    ///      AudioLink texture for amplitude and colour, reads world-space fixture
+    ///      config from the StructuredBuffer, and writes VRSLLightData entries.
     ///
-    ///   2. LightingPass — fullscreen additive pass; reconstructs world position
-    ///      from depth + normals and adds each GPU-decoded light's contribution
-    ///      to the frame (Hidden/VRSL/DeferredLighting shader).
+    ///   2. LightingPass — reuses Hidden/VRSL/DeferredLighting; identical to the
+    ///      DMX realtime light path. The two paths share the same lighting shader
+    ///      and the same _VRSLLights / _VRSLLightCount globals.
     ///
-    ///   3. VolumetricPass — three Render Graph sub-passes that depth-downsample,
-    ///      raymarch in-scattering at half resolution, and bilaterally composite
-    ///      the result onto the camera colour target (Hidden/VRSL/VolumetricLighting).
+    ///   3. VolumetricPass — three Render Graph sub-passes (depth downsample,
+    ///      half-res raymarch, bilateral upsample composite) using
+    ///      Hidden/VRSL/VolumetricLighting.
     ///
-    /// VRSL_URPLightManager subscribes to RenderPipelineManager.beginCameraRendering
-    /// at runtime and enqueues these pass instances per camera, so this feature does
-    /// not need to be added to the URP Renderer asset for the pipeline to run. The
-    /// feature shell remains as a dormant fallback path: AddRenderPasses early-outs
-    /// when the manager's useRuntimePassInjection flag is true (the default), and
-    /// only takes over when the user disables that flag and adds this feature to
-    /// their renderer asset manually.
+    /// VRSL_AudioLinkURPLightManager subscribes to
+    /// RenderPipelineManager.beginCameraRendering and enqueues instances of these
+    /// passes per camera. There is no ScriptableRendererFeature in this pipeline —
+    /// the runtime-injection path is the only supported mode of operation.
+    ///
+    /// Note: running the AudioLink path simultaneously with the DMX path on the
+    /// same camera is not currently supported — both write to _VRSLLights /
+    /// _VRSLLightCount and the last pass to execute wins. A future merged-buffer
+    /// path can address this.
     /// </summary>
-    [System.Serializable]
-    public class VRSLRealtimeLightFeature : ScriptableRendererFeature
+    public static class VRSLAudioLinkLightPasses
     {
-        // ── Compute pass: decode DMX → light buffer ────────────────────────────
-        // Public so VRSL_URPLightManager can instantiate it directly when running
-        // the runtime-injection path (RenderPipelineManager.beginCameraRendering)
-        // instead of being driven through this feature.
+        // ── Compute pass: AudioLink → light buffer ─────────────────────────────
         public class ComputePass : ScriptableRenderPass
         {
             class PassData
             {
                 public BufferHandle  fixtureConfigBuffer;
                 public BufferHandle  lightDataBuffer;
-                public TextureHandle dmxMainTex;
-                public TextureHandle dmxMovementTex;
-                public TextureHandle dmxStrobeTex;
-                public TextureHandle dmxSpinTimerTex;
+                public TextureHandle audioLinkTex;
                 public ComputeShader cs;
                 public int           kernel;
                 public int           fixtureCount;
-                public int           goboCount;
-                public Vector4       texelSize;
+                public float         time;
             }
 
             public override void RecordRenderGraph(RenderGraph rg, ContextContainer frame)
             {
-                var mgr = VRSL_URPLightManager.Instance;
+                var mgr = VRSL_AudioLinkURPLightManager.Instance;
                 if (mgr == null || mgr.FixtureCount == 0
-                    || mgr.computeShader == null
+                    || mgr.computeShader    == null
                     || mgr.FixtureConfigBuffer == null
-                    || mgr.DMXMainHandle == null) return;
+                    || mgr.AudioLinkHandle  == null) return;
 
-                using var builder = rg.AddComputePass<PassData>("VRSL DMX Light Compute", out var d);
+                using var builder = rg.AddComputePass<PassData>("VRSL AudioLink Light Compute", out var d);
 
                 d.fixtureConfigBuffer = rg.ImportBuffer(mgr.FixtureConfigBuffer);
                 d.lightDataBuffer     = rg.ImportBuffer(mgr.LightDataBuffer);
-                d.dmxMainTex          = rg.ImportTexture(mgr.DMXMainHandle);
-                d.dmxMovementTex      = mgr.DMXMovementHandle != null
-                    ? rg.ImportTexture(mgr.DMXMovementHandle)
-                    : TextureHandle.nullHandle;
-                d.dmxStrobeTex        = mgr.DMXStrobeHandle != null
-                    ? rg.ImportTexture(mgr.DMXStrobeHandle)
-                    : TextureHandle.nullHandle;
-                d.dmxSpinTimerTex     = mgr.DMXSpinTimerHandle != null
-                    ? rg.ImportTexture(mgr.DMXSpinTimerHandle)
-                    : TextureHandle.nullHandle;
+                d.audioLinkTex        = rg.ImportTexture(mgr.AudioLinkHandle);
+                d.cs                  = mgr.computeShader;
+                d.kernel              = mgr.ComputeKernel;
+                d.fixtureCount        = mgr.FixtureCount;
+                // Captured here so the render graph lambda doesn't read Time.* off thread.
+                // timeSinceLevelLoad resets on scene reload, which is the desirable behaviour
+                // for gobo spin — phase restarts cleanly with the scene.
+                d.time                = Time.timeSinceLevelLoad;
 
-                d.cs           = mgr.computeShader;
-                d.kernel       = mgr.ComputeKernel;
-                d.fixtureCount = mgr.FixtureCount;
-                d.goboCount    = mgr.GoboCount;
-                d.texelSize    = new Vector4(
-                    1f / mgr.dmxMainTexture.width,
-                    1f / mgr.dmxMainTexture.height,
-                    mgr.dmxMainTexture.width,
-                    mgr.dmxMainTexture.height);
-
-                builder.UseBuffer(d.fixtureConfigBuffer, AccessFlags.Read);
-                builder.UseBuffer(d.lightDataBuffer,     AccessFlags.Write);
-                builder.UseTexture(d.dmxMainTex,         AccessFlags.Read);
-                if (d.dmxMovementTex.IsValid())
-                    builder.UseTexture(d.dmxMovementTex, AccessFlags.Read);
-                if (d.dmxStrobeTex.IsValid())
-                    builder.UseTexture(d.dmxStrobeTex,   AccessFlags.Read);
-                if (d.dmxSpinTimerTex.IsValid())
-                    builder.UseTexture(d.dmxSpinTimerTex, AccessFlags.Read);
+                builder.UseBuffer( d.fixtureConfigBuffer, AccessFlags.Read);
+                builder.UseBuffer( d.lightDataBuffer,     AccessFlags.Write);
+                builder.UseTexture(d.audioLinkTex,        AccessFlags.Read);
 
                 builder.SetRenderFunc((PassData p, ComputeGraphContext ctx) =>
                 {
                     var cmd = ctx.cmd;
-                    cmd.SetComputeVectorParam( p.cs,           "_VRSLDMXTexelSize", p.texelSize);
-                    cmd.SetComputeIntParam(    p.cs,           "_FixtureCount",     p.fixtureCount);
-                    cmd.SetComputeIntParam(    p.cs,           "_VRSLGoboCount",    p.goboCount);
-                    cmd.SetComputeBufferParam( p.cs, p.kernel, "_FixtureConfigs",   p.fixtureConfigBuffer);
-                    cmd.SetComputeBufferParam( p.cs, p.kernel, "_LightData",        p.lightDataBuffer);
-                    cmd.SetComputeTextureParam(p.cs, p.kernel, "_DMXMainTex",       p.dmxMainTex);
-
-                    if (p.dmxMovementTex.IsValid())
-                        cmd.SetComputeTextureParam(p.cs, p.kernel, "_DMXMovementTex", p.dmxMovementTex);
-                    if (p.dmxStrobeTex.IsValid())
-                        cmd.SetComputeTextureParam(p.cs, p.kernel, "_DMXStrobeTex",   p.dmxStrobeTex);
-                    if (p.dmxSpinTimerTex.IsValid())
-                        cmd.SetComputeTextureParam(p.cs, p.kernel, "_DMXSpinTimerTex", p.dmxSpinTimerTex);
-
+                    cmd.SetComputeIntParam(    p.cs,           "_FixtureCount",       p.fixtureCount);
+                    cmd.SetComputeFloatParam(  p.cs,           "_VRSLTime",           p.time);
+                    cmd.SetComputeBufferParam( p.cs, p.kernel, "_ALFixtureConfigs",   p.fixtureConfigBuffer);
+                    cmd.SetComputeBufferParam( p.cs, p.kernel, "_LightData",          p.lightDataBuffer);
+                    cmd.SetComputeTextureParam(p.cs, p.kernel, "_AudioTexture",       p.audioLinkTex);
                     cmd.DispatchCompute(p.cs, p.kernel, Mathf.CeilToInt(p.fixtureCount / 64f), 1, 1);
                 });
             }
         }
 
-        // ── Fullscreen additive pass: light the scene ──────────────────────────
+        // ── Fullscreen additive pass: illuminate scene geometry ────────────────
+        // Identical to the DMX path's LightingPass — the deferred lighting shader
+        // reads _VRSLLights / _VRSLLightCount regardless of which compute pass wrote them.
         public class LightingPass : ScriptableRenderPass
         {
             class PassData
@@ -132,7 +102,7 @@ namespace VRSL
 
             public override void RecordRenderGraph(RenderGraph rg, ContextContainer frame)
             {
-                var mgr = VRSL_URPLightManager.Instance;
+                var mgr = VRSL_AudioLinkURPLightManager.Instance;
                 if (mgr == null || mgr.FixtureCount == 0
                     || mgr.LightingMaterial == null
                     || mgr.LightDataBuffer  == null) return;
@@ -141,12 +111,12 @@ namespace VRSL
 
                 if (!resources.cameraNormalsTexture.IsValid())
                 {
-                    Debug.LogWarning("[VRSL] URP lighting requires 'Depth Normals Prepass' "
+                    Debug.LogWarning("[VRSL] AudioLink URP lighting requires 'Depth Normals Prepass' "
                         + "enabled on the URP Renderer asset.");
                     return;
                 }
 
-                using var builder = rg.AddRasterRenderPass<PassData>("VRSL Lighting Pass", out var d);
+                using var builder = rg.AddRasterRenderPass<PassData>("VRSL AudioLink Lighting Pass", out var d);
 
                 d.lightDataBuffer = rg.ImportBuffer(mgr.LightDataBuffer);
                 d.depthTexture    = resources.cameraDepthTexture;
@@ -165,7 +135,6 @@ namespace VRSL
                     var cmd = ctx.cmd;
                     cmd.SetGlobalBuffer( "_VRSLLights",     p.lightDataBuffer);
                     cmd.SetGlobalInteger("_VRSLLightCount", p.lightCount);
-                    // Full-screen triangle: 3 vertices, no vertex buffer needed
                     cmd.DrawProcedural(Matrix4x4.identity, p.material, 0,
                         MeshTopology.Triangles, 3, 1);
                 });
@@ -173,8 +142,10 @@ namespace VRSL
         }
 
         // ── Volumetric pass: raymarched in-scattering ──────────────────────────
-        // Records three Render Graph sub-passes. Half-res transient RTs are
-        // created with rg.CreateTexture so they live exactly for this frame.
+        // Mirrors VRSLDMXLightPasses.VolumetricPass — same shader, same
+        // sub-pass structure. Records three Render Graph sub-passes (depth
+        // downsample → half-res raymarch → bilateral upsample) reading the
+        // _VRSLLights buffer the AudioLink ComputePass already wrote.
         public class VolumetricPass : ScriptableRenderPass
         {
             class DownsampleData
@@ -203,7 +174,7 @@ namespace VRSL
 
             public override void RecordRenderGraph(RenderGraph rg, ContextContainer frame)
             {
-                var mgr = VRSL_URPLightManager.Instance;
+                var mgr = VRSL_AudioLinkURPLightManager.Instance;
                 if (mgr == null
                     || mgr.FixtureCount == 0
                     || mgr.VolumetricMaterial == null
@@ -278,7 +249,6 @@ namespace VRSL
                 TextureHandle halfDepth = rg.CreateTexture(halfDepthDesc);
                 TextureHandle halfRT    = rg.CreateTexture(halfRTDesc);
 
-                // Sub-pass 1 — depth downsample
                 using (var builder = rg.AddRasterRenderPass<DownsampleData>(
                     "VRSL Vol Depth Downsample", out var d))
                 {
@@ -295,7 +265,6 @@ namespace VRSL
                     });
                 }
 
-                // Sub-pass 2 — raymarch
                 using (var builder = rg.AddRasterRenderPass<RaymarchData>(
                     "VRSL Vol Raymarch", out var d))
                 {
@@ -326,7 +295,6 @@ namespace VRSL
                     });
                 }
 
-                // Sub-pass 3 — bilateral upsample composite onto camera colour
                 using (var builder = rg.AddRasterRenderPass<UpsampleData>(
                     "VRSL Vol Upsample", out var d))
                 {
@@ -352,48 +320,5 @@ namespace VRSL
             }
         }
 
-        // ── ScriptableRendererFeature ──────────────────────────────────────────
-        ComputePass    _computePass;
-        LightingPass   _lightingPass;
-        VolumetricPass _volumetricPass;
-
-        public override void Create()
-        {
-            _computePass = new ComputePass
-            {
-                renderPassEvent = RenderPassEvent.BeforeRenderingOpaques
-            };
-            _lightingPass = new LightingPass
-            {
-                // After opaques so the additive contribution lands on top of
-                // lit geometry but before transparents
-                renderPassEvent = RenderPassEvent.AfterRenderingOpaques
-            };
-            _volumetricPass = new VolumetricPass
-            {
-                // After the surface lighting pass, before transparents and skybox
-                renderPassEvent = (RenderPassEvent)((int)RenderPassEvent.AfterRenderingOpaques + 1)
-            };
-        }
-
-        public override void AddRenderPasses(ScriptableRenderer renderer, ref RenderingData renderingData)
-        {
-            var mgr = VRSL_URPLightManager.Instance;
-            if (mgr == null) return;
-            // Manager owns pass injection via RenderPipelineManager.beginCameraRendering
-            // when the runtime-injection path is enabled — skip here to avoid duplicate
-            // passes if both the manager and this feature are wired up simultaneously.
-            if (mgr.useRuntimePassInjection) return;
-            _lightingPass.ConfigureInput(ScriptableRenderPassInput.Normal | ScriptableRenderPassInput.Depth);
-            _volumetricPass.ConfigureInput(ScriptableRenderPassInput.Depth);
-            // Gobo array is a plain Texture2DArray — set as a global here rather than
-            // inside the render graph where only TextureHandle is accepted.
-            if (mgr.GoboArray != null)
-                Shader.SetGlobalTexture("_VRSLGobos", mgr.GoboArray);
-            renderer.EnqueuePass(_computePass);
-            renderer.EnqueuePass(_lightingPass);
-            if (mgr.VolumetricMaterial != null)
-                renderer.EnqueuePass(_volumetricPass);
-        }
     }
 }

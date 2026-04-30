@@ -45,7 +45,7 @@ Per-fixture config (StructuredBuffer)
   screen-space depth-occluded against on-screen geometry.
 ```
 
-Both data sources (DMX, AudioLink) write the same `VRSLLightData` struct, so the surface and volumetric shaders are identical between paths. The pass classes (`ComputePass`, `LightingPass`, `VolumetricPass`) live as nested types inside `VRSLRealtimeLightFeature` and `VRSLAudioLinkRealtimeLightFeature` — the manager instantiates them and enqueues them per camera. The feature shells themselves are dormant fallbacks that early-out unless the manager's `useRuntimePassInjection` flag is disabled, which exists for advanced users who want to drive the passes manually through the URP Renderer asset.
+Both data sources (DMX, AudioLink) write the same `VRSLLightData` struct, so the surface and volumetric shaders are identical between paths. The pass classes (`ComputePass`, `LightingPass`, `VolumetricPass`) live as nested types inside the static container classes `VRSLDMXLightPasses` and `VRSLAudioLinkLightPasses`. The manager instantiates them and enqueues them per camera; there is no `ScriptableRendererFeature` involved.
 
 ### Differences between data sources
 
@@ -285,8 +285,8 @@ A few Unity 6-specific requirements are worth flagging for contributors:
 | `Runtime/Scripts/VRStageLighting_AudioLink_RealtimeLight.cs` | VRSL.Core | AudioLink per-fixture config component |
 | `Runtime/Scripts/URP/VRSL_URPLightManager.cs` | VRSL.URP | DMX manager singleton |
 | `Runtime/Scripts/URP/VRSL_AudioLinkURPLightManager.cs` | VRSL.URP | AudioLink manager singleton |
-| `Runtime/Scripts/URP/VRSLRealtimeLightFeature.cs` | VRSL.URP | DMX pass classes (compute + surface + volumetric); feature shell is dormant by default |
-| `Runtime/Scripts/URP/VRSLAudioLinkRealtimeLightFeature.cs` | VRSL.URP | AudioLink pass classes; feature shell dormant by default |
+| `Runtime/Scripts/URP/VRSLDMXLightPasses.cs` | VRSL.URP | DMX pass classes (compute + surface + volumetric) |
+| `Runtime/Scripts/URP/VRSLAudioLinkLightPasses.cs` | VRSL.URP | AudioLink pass classes |
 | `Runtime/Scripts/URP/Editor/VRSL_URPRendererSetup.cs` | VRSL.URP.Editor | Menu utilities for URP renderer + scene setup (DMX) |
 | `Runtime/Shaders/Compute/VRSLDMXLightUpdate.compute` | — | DMX compute kernel |
 | `Runtime/Shaders/Compute/VRSLAudioLinkLightUpdate.compute` | — | AudioLink compute kernel |
