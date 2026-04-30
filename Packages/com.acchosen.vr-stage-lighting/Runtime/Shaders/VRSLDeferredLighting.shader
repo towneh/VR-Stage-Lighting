@@ -28,7 +28,7 @@ Shader "Hidden/VRSL/DeferredLighting"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/DeclareNormalsTexture.hlsl"
             #include "Shared/VRSLLightingLibrary.hlsl"
 
-            // Set by VRSLRealtimeLightFeature via SetGlobal* before DrawProcedural
+            // Set by the manager's LightingPass via SetGlobal* before DrawProcedural
             StructuredBuffer<VRSLLightData> _VRSLLights;
             uint _VRSLLightCount;
 

@@ -7,33 +7,30 @@ using UnityEngine.Rendering.RenderGraphModule;
 namespace VRSL
 {
     /// <summary>
-    /// URP ScriptableRendererFeature (Unity 6 Render Graph API) that drives the
-    /// VRSL URP realtime-light pipeline in three phases per frame:
+    /// Holds the three Render Graph pass classes that make up the VRSL URP DMX
+    /// realtime-light pipeline:
     ///
-    ///   1. Compute pass  — dispatches VRSLDMXLightUpdate.compute, which reads the
+    ///   1. ComputePass — dispatches VRSLDMXLightUpdate.compute, which reads the
     ///      three DMX RenderTextures and writes a VRSLLightData StructuredBuffer.
-    ///      Runs before opaque rendering so shadow maps can pick up light positions.
     ///
-    ///   2. Fullscreen additive pass — after opaque rendering, reconstructs world
-    ///      position from depth + normals and adds each GPU-decoded light's
-    ///      contribution to the frame (Hidden/VRSL/DeferredLighting shader).
+    ///   2. LightingPass — fullscreen additive pass; reconstructs world position
+    ///      from depth + normals and adds each GPU-decoded light's contribution
+    ///      to the frame (Hidden/VRSL/DeferredLighting shader).
     ///
-    ///   3. Volumetric pass — three Render Graph sub-passes that depth-
-    ///      downsample, raymarch in-scattering at half resolution, and
-    ///      bilaterally composite the result onto the camera colour target
-    ///      (Hidden/VRSL/VolumetricLighting shader). Runs whenever the
-    ///      manager has a volumetric shader assigned.
+    ///   3. VolumetricPass — three Render Graph sub-passes that depth-downsample,
+    ///      raymarch in-scattering at half resolution, and bilaterally composite
+    ///      the result onto the camera colour target (Hidden/VRSL/VolumetricLighting).
     ///
-    /// Requirements:
-    ///   • A VRSL_URPLightManager in the scene with the textures and shaders assigned.
-    ///   • "Depth Normals Prepass" enabled on this URP Renderer asset.
-    ///   • This feature added to the same URP Renderer asset.
+    /// VRSL_URPLightManager subscribes to RenderPipelineManager.beginCameraRendering
+    /// and enqueues instances of these passes per camera. There is no
+    /// ScriptableRendererFeature in this pipeline — the runtime-injection path is
+    /// the only supported mode of operation, so the package works in environments
+    /// where users cannot author the URP Renderer asset (notably VRChat worlds).
     /// </summary>
-    [System.Serializable]
-    public class VRSLRealtimeLightFeature : ScriptableRendererFeature
+    public static class VRSLDMXLightPasses
     {
         // ── Compute pass: decode DMX → light buffer ────────────────────────────
-        class ComputePass : ScriptableRenderPass
+        public class ComputePass : ScriptableRenderPass
         {
             class PassData
             {
@@ -116,7 +113,7 @@ namespace VRSL
         }
 
         // ── Fullscreen additive pass: light the scene ──────────────────────────
-        class LightingPass : ScriptableRenderPass
+        public class LightingPass : ScriptableRenderPass
         {
             class PassData
             {
@@ -172,7 +169,7 @@ namespace VRSL
         // ── Volumetric pass: raymarched in-scattering ──────────────────────────
         // Records three Render Graph sub-passes. Half-res transient RTs are
         // created with rg.CreateTexture so they live exactly for this frame.
-        class VolumetricPass : ScriptableRenderPass
+        public class VolumetricPass : ScriptableRenderPass
         {
             class DownsampleData
             {
@@ -349,44 +346,5 @@ namespace VRSL
             }
         }
 
-        // ── ScriptableRendererFeature ──────────────────────────────────────────
-        ComputePass    _computePass;
-        LightingPass   _lightingPass;
-        VolumetricPass _volumetricPass;
-
-        public override void Create()
-        {
-            _computePass = new ComputePass
-            {
-                renderPassEvent = RenderPassEvent.BeforeRenderingOpaques
-            };
-            _lightingPass = new LightingPass
-            {
-                // After opaques so the additive contribution lands on top of
-                // lit geometry but before transparents
-                renderPassEvent = RenderPassEvent.AfterRenderingOpaques
-            };
-            _volumetricPass = new VolumetricPass
-            {
-                // After the surface lighting pass, before transparents and skybox
-                renderPassEvent = (RenderPassEvent)((int)RenderPassEvent.AfterRenderingOpaques + 1)
-            };
-        }
-
-        public override void AddRenderPasses(ScriptableRenderer renderer, ref RenderingData renderingData)
-        {
-            var mgr = VRSL_URPLightManager.Instance;
-            if (mgr == null) return;
-            _lightingPass.ConfigureInput(ScriptableRenderPassInput.Normal | ScriptableRenderPassInput.Depth);
-            _volumetricPass.ConfigureInput(ScriptableRenderPassInput.Depth);
-            // Gobo array is a plain Texture2DArray — set as a global here rather than
-            // inside the render graph where only TextureHandle is accepted.
-            if (mgr.GoboArray != null)
-                Shader.SetGlobalTexture("_VRSLGobos", mgr.GoboArray);
-            renderer.EnqueuePass(_computePass);
-            renderer.EnqueuePass(_lightingPass);
-            if (mgr.VolumetricMaterial != null)
-                renderer.EnqueuePass(_volumetricPass);
-        }
     }
 }

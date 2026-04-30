@@ -7,38 +7,35 @@ using UnityEngine.Rendering.RenderGraphModule;
 namespace VRSL
 {
     /// <summary>
-    /// URP ScriptableRendererFeature (Unity 6 Render Graph API) for the
-    /// AudioLink-driven realtime light pipeline.
+    /// Holds the three Render Graph pass classes that make up the VRSL URP
+    /// AudioLink realtime-light pipeline:
     ///
-    /// Schedules up to three passes per frame:
-    ///   1. Compute pass (BeforeRenderingOpaques) — dispatches VRSLAudioLinkLightUpdate.compute,
-    ///      which samples the AudioLink texture for amplitude and color, reads world-space
-    ///      fixture config from the StructuredBuffer, and writes VRSLLightData entries.
+    ///   1. ComputePass — dispatches VRSLAudioLinkLightUpdate.compute, samples the
+    ///      AudioLink texture for amplitude and colour, reads world-space fixture
+    ///      config from the StructuredBuffer, and writes VRSLLightData entries.
     ///
-    ///   2. Fullscreen additive pass (AfterRenderingOpaques) — reuses Hidden/VRSL/DeferredLighting,
-    ///      identical to the DMX realtime light path. The two paths share the same lighting shader
+    ///   2. LightingPass — reuses Hidden/VRSL/DeferredLighting; identical to the
+    ///      DMX realtime light path. The two paths share the same lighting shader
     ///      and the same _VRSLLights / _VRSLLightCount globals.
     ///
-    ///   3. Volumetric pass — three Render Graph sub-passes that depth-downsample,
-    ///      raymarch in-scattering at half resolution, and bilaterally composite the result onto
-    ///      the camera colour target (Hidden/VRSL/VolumetricLighting shader). Runs whenever the
-    ///      manager has a volumetric shader assigned.
+    ///   3. VolumetricPass — three Render Graph sub-passes (depth downsample,
+    ///      half-res raymarch, bilateral upsample composite) using
+    ///      Hidden/VRSL/VolumetricLighting.
     ///
-    /// Requirements:
-    ///   • A VRSL_AudioLinkURPLightManager in the scene with compute and lighting shaders assigned.
-    ///   • "Depth Normals Prepass" enabled on this URP Renderer asset.
-    ///   • This feature added to the same URP Renderer asset.
-    ///   • AudioLink active in the scene (sets _AudioTexture as a global RenderTexture).
+    /// VRSL_AudioLinkURPLightManager subscribes to
+    /// RenderPipelineManager.beginCameraRendering and enqueues instances of these
+    /// passes per camera. There is no ScriptableRendererFeature in this pipeline —
+    /// the runtime-injection path is the only supported mode of operation.
     ///
-    /// Note: running this feature simultaneously with VRSLRealtimeLightFeature (DMX path) is
-    /// not currently supported — both write to _VRSLLights / _VRSLLightCount and the last pass
-    /// to execute wins. A future merged-buffer path can address this.
+    /// Note: running the AudioLink path simultaneously with the DMX path on the
+    /// same camera is not currently supported — both write to _VRSLLights /
+    /// _VRSLLightCount and the last pass to execute wins. A future merged-buffer
+    /// path can address this.
     /// </summary>
-    [System.Serializable]
-    public class VRSLAudioLinkRealtimeLightFeature : ScriptableRendererFeature
+    public static class VRSLAudioLinkLightPasses
     {
         // ── Compute pass: AudioLink → light buffer ─────────────────────────────
-        class ComputePass : ScriptableRenderPass
+        public class ComputePass : ScriptableRenderPass
         {
             class PassData
             {
@@ -92,7 +89,7 @@ namespace VRSL
         // ── Fullscreen additive pass: illuminate scene geometry ────────────────
         // Identical to the DMX path's LightingPass — the deferred lighting shader
         // reads _VRSLLights / _VRSLLightCount regardless of which compute pass wrote them.
-        class LightingPass : ScriptableRenderPass
+        public class LightingPass : ScriptableRenderPass
         {
             class PassData
             {
@@ -145,11 +142,11 @@ namespace VRSL
         }
 
         // ── Volumetric pass: raymarched in-scattering ──────────────────────────
-        // Mirrors VRSLRealtimeLightFeature.VolumetricPass — same shader, same
+        // Mirrors VRSLDMXLightPasses.VolumetricPass — same shader, same
         // sub-pass structure. Records three Render Graph sub-passes (depth
         // downsample → half-res raymarch → bilateral upsample) reading the
         // _VRSLLights buffer the AudioLink ComputePass already wrote.
-        class VolumetricPass : ScriptableRenderPass
+        public class VolumetricPass : ScriptableRenderPass
         {
             class DownsampleData
             {
@@ -323,44 +320,5 @@ namespace VRSL
             }
         }
 
-        // ── ScriptableRendererFeature ──────────────────────────────────────────
-        ComputePass    _computePass;
-        LightingPass   _lightingPass;
-        VolumetricPass _volumetricPass;
-
-        public override void Create()
-        {
-            _computePass = new ComputePass
-            {
-                renderPassEvent = RenderPassEvent.BeforeRenderingOpaques
-            };
-            _lightingPass = new LightingPass
-            {
-                renderPassEvent = RenderPassEvent.AfterRenderingOpaques
-            };
-            _volumetricPass = new VolumetricPass
-            {
-                renderPassEvent = (RenderPassEvent)((int)RenderPassEvent.AfterRenderingOpaques + 1)
-            };
-        }
-
-        public override void AddRenderPasses(ScriptableRenderer renderer, ref RenderingData renderingData)
-        {
-            var mgr = VRSL_AudioLinkURPLightManager.Instance;
-            if (mgr == null) return;
-            // Request the depth normals prepass so _CameraNormalsTexture is populated.
-            // In Unity 6 URP the prepass has no Inspector toggle — it activates when a
-            // renderer feature declares this requirement before enqueueing its pass.
-            _lightingPass.ConfigureInput(ScriptableRenderPassInput.Normal | ScriptableRenderPassInput.Depth);
-            _volumetricPass.ConfigureInput(ScriptableRenderPassInput.Depth);
-            // Gobo array is a plain Texture2DArray — set as a global here (CPU path)
-            // rather than inside the render graph where only TextureHandle is accepted.
-            if (mgr.GoboArray != null)
-                Shader.SetGlobalTexture("_VRSLGobos", mgr.GoboArray);
-            renderer.EnqueuePass(_computePass);
-            renderer.EnqueuePass(_lightingPass);
-            if (mgr.VolumetricMaterial != null)
-                renderer.EnqueuePass(_volumetricPass);
-        }
     }
 }

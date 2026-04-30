@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using System.Reflection;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -9,14 +8,16 @@ using UnityEngine.Rendering.Universal;
 namespace VRSL.EditorScripts
 {
     /// <summary>
-    /// Editor utilities that wire up the VRSL DMX URP realtime light path.
+    /// Editor utilities that wire up the VRSL URP realtime light path.
     /// Two independent menu actions so authors can configure the project
     /// without modifying the active scene, and vice versa:
     ///
-    ///   • <b>Configure URP Renderer for VRSL Realtime Lights (DMX)</b> —
+    ///   • <b>Configure URP Renderer for VRSL Realtime Lights</b> —
     ///     project-level only. Sets the active URP renderer to Forward+,
-    ///     disables Depth Priming, enables the URP asset's Depth Texture, and
-    ///     appends VRSLRealtimeLightFeature as a sub-asset.
+    ///     disables Depth Priming, and enables the URP asset's Depth Texture.
+    ///     The render passes themselves are injected at runtime by the
+    ///     manager via RenderPipelineManager.beginCameraRendering, so no
+    ///     ScriptableRendererFeature is added to the renderer asset.
     ///
     ///   • <b>Add VRSL URP Light Manager to Active Scene</b> — scene-level
     ///     only. Creates a VRSL_URPLightManager in the active scene if missing
@@ -28,10 +29,9 @@ namespace VRSL.EditorScripts
     /// </summary>
     public static class VRSL_URPRendererSetup
     {
-        const string MENU_PROJECT = "VRSL/Configure URP Renderer for VRSL Realtime Lights (DMX)";
+        const string MENU_PROJECT = "VRSL/Configure URP Renderer for VRSL Realtime Lights";
         const string MENU_SCENE   = "VRSL/Add VRSL URP Light Manager to Active Scene";
 
-        const string FEATURE_NAME           = "VRSL Realtime Light Feature";
         const string LIGHTING_SHADER_NAME   = "Hidden/VRSL/DeferredLighting";
         const string VOLUMETRIC_SHADER_NAME = "Hidden/VRSL/VolumetricLighting";
         const string COMPUTE_SHADER_FILTER  = "VRSLDMXLightUpdate t:ComputeShader";
@@ -75,13 +75,6 @@ namespace VRSL.EditorScripts
                 }
 
                 so.ApplyModifiedProperties();
-            }
-
-            // Renderer feature
-            if (!HasFeature<VRSLRealtimeLightFeature>(rendererData))
-            {
-                AddFeature<VRSLRealtimeLightFeature>(rendererData, FEATURE_NAME);
-                report.Add($"Added '{FEATURE_NAME}' to renderer.");
             }
 
             // URP asset: depth texture
@@ -214,38 +207,6 @@ namespace VRSL.EditorScripts
             }
 
             return candidates[0];
-        }
-
-        static bool HasFeature<T>(ScriptableRendererData rendererData)
-            where T : ScriptableRendererFeature
-        {
-            foreach (var f in rendererData.rendererFeatures)
-                if (f is T) return true;
-            return false;
-        }
-
-        static void AddFeature<T>(ScriptableRendererData rendererData, string name)
-            where T : ScriptableRendererFeature
-        {
-            var feature = ScriptableObject.CreateInstance<T>();
-            feature.name = name;
-
-            // Persist the feature as a sub-asset of the renderer data and
-            // register it in the rendererFeatures list. The internal
-            // ValidateRendererFeatures call refreshes URP's GUID map so the
-            // feature shows up in the inspector immediately.
-            rendererData.rendererFeatures.Add(feature);
-            AssetDatabase.AddObjectToAsset(feature, rendererData);
-
-            var validate = typeof(ScriptableRendererData).GetMethod(
-                "ValidateRendererFeatures",
-                BindingFlags.NonPublic | BindingFlags.Instance);
-            validate?.Invoke(rendererData, null);
-
-            EditorUtility.SetDirty(rendererData);
-            EditorUtility.SetDirty(feature);
-            AssetDatabase.SaveAssets();
-            AssetDatabase.ImportAsset(AssetDatabase.GetAssetPath(rendererData));
         }
 
         static T FindAsset<T>(string filter) where T : Object
