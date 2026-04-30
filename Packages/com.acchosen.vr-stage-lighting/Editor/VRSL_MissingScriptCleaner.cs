@@ -79,7 +79,11 @@ namespace VRSL.EditorScripts
 
         // Restricts cleanup to subtrees rooted under a recognisable VRSL
         // GameObject so unrelated missing scripts the user is investigating
-        // elsewhere in the scene are left alone.
+        // elsewhere in the scene are left alone. Recognised by either the
+        // VRSL namespace or the conventional VRSL_ / VRStageLighting_ type-
+        // name prefix — a few VRSL scripts (VRSL_AudioLink_SmoothingPanel,
+        // VRSL_DMXGlobalExport) live in the global namespace and would
+        // otherwise be missed.
         static bool HasVRSLComponent(GameObject go)
         {
             var comps = go.GetComponents<MonoBehaviour>();
@@ -87,8 +91,12 @@ namespace VRSL.EditorScripts
             {
                 var c = comps[i];
                 if (c == null) continue;            // missing script
-                var ns = c.GetType().Namespace;
+                var t = c.GetType();
+                var ns = t.Namespace;
                 if (ns != null && (ns == "VRSL" || ns.StartsWith("VRSL.")))
+                    return true;
+                var name = t.Name;
+                if (name.StartsWith("VRSL_") || name.StartsWith("VRStageLighting_"))
                     return true;
             }
             return false;
