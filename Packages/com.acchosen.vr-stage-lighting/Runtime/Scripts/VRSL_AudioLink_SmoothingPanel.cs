@@ -17,17 +17,18 @@ public class VRSL_AudioLink_SmoothingPanel : MonoBehaviour
     public Text bassSmoothingText, lowerMidSmoothingText, upperMidSmoothingText, trebleSmoothingText, colorChordSmoothingText;
     float bassSmoothingInit, lowerMidSmoothingInit, upperMidSmoothingInit, trebleSmoothingInit, colorChordSmoothingInit;
     public CustomRenderTexture smoothingTexture;
+    [Tooltip("Optional. Only needed if you're on a legacy AudioLink build that drives its CRT via a Camera. Modern AudioLink (2.x+) self-updates its CRTs and ignores this — leave blank.")]
     public Camera audioLinkCamera;
 
-    void Start() 
+    void Start()
     {
-        if(smoothingTexture && audioLinkCamera)
+        // Camera reference is a legacy AudioLink (pre-2.x) artefact — only
+        // wire the camera into the CRT when both are explicitly assigned.
+        // Modern AudioLink CRTs self-update, so leaving the camera blank is
+        // the expected configuration and not worth a console warning.
+        if (smoothingTexture != null && audioLinkCamera != null)
         {
             audioLinkCamera.targetTexture = smoothingTexture;
-        }
-        else
-        {
-            Debug.Log("AudioLink Camera not found! Please add a reference to the audiolink camera to the AudioLink Smoothing Panel Script!");
         }
         bassSmoothingInit = bassSmoothingSlider.value;
         lowerMidSmoothingInit = lowerMidSmoothingSlider.value;
