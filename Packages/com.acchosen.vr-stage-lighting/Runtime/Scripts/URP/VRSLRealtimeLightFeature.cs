@@ -33,7 +33,10 @@ namespace VRSL
     public class VRSLRealtimeLightFeature : ScriptableRendererFeature
     {
         // ── Compute pass: decode DMX → light buffer ────────────────────────────
-        class ComputePass : ScriptableRenderPass
+        // Public so VRSL_URPLightManager can instantiate it directly when running
+        // the runtime-injection path (RenderPipelineManager.beginCameraRendering)
+        // instead of being driven through this feature.
+        public class ComputePass : ScriptableRenderPass
         {
             class PassData
             {
@@ -116,7 +119,7 @@ namespace VRSL
         }
 
         // ── Fullscreen additive pass: light the scene ──────────────────────────
-        class LightingPass : ScriptableRenderPass
+        public class LightingPass : ScriptableRenderPass
         {
             class PassData
             {
@@ -172,7 +175,7 @@ namespace VRSL
         // ── Volumetric pass: raymarched in-scattering ──────────────────────────
         // Records three Render Graph sub-passes. Half-res transient RTs are
         // created with rg.CreateTexture so they live exactly for this frame.
-        class VolumetricPass : ScriptableRenderPass
+        public class VolumetricPass : ScriptableRenderPass
         {
             class DownsampleData
             {
@@ -377,6 +380,10 @@ namespace VRSL
         {
             var mgr = VRSL_URPLightManager.Instance;
             if (mgr == null) return;
+            // Manager owns pass injection via RenderPipelineManager.beginCameraRendering
+            // when the runtime-injection path is enabled — skip here to avoid duplicate
+            // passes if both the manager and this feature are wired up simultaneously.
+            if (mgr.useRuntimePassInjection) return;
             _lightingPass.ConfigureInput(ScriptableRenderPassInput.Normal | ScriptableRenderPassInput.Depth);
             _volumetricPass.ConfigureInput(ScriptableRenderPassInput.Depth);
             // Gobo array is a plain Texture2DArray — set as a global here rather than
