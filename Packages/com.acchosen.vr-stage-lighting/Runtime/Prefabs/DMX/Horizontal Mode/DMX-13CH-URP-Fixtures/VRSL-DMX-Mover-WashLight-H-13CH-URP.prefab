@@ -61,6 +61,7 @@ MonoBehaviour:
   minSpotAngle: 10
   maxSpotAngle: 100
   range: 20
+  emitterDepth: 0.18
   isPointLight: 0
   enableGobo: 1
   enableGoboSpin: 1

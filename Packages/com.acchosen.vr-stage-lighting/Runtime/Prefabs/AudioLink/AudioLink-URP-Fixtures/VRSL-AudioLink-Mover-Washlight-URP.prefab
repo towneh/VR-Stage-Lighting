@@ -407,6 +407,7 @@ MonoBehaviour:
   maxIntensity: 1
   spotAngle: 60
   range: 20
+  emitterDepth: 0.18
   isPointLight: 0
   goboIndex: -1
   goboSpinSpeed: 0
