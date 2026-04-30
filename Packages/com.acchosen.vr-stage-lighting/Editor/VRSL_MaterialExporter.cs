@@ -28,7 +28,7 @@ namespace VRSL.EditorScripts
             }
             string sceneName = SceneManager.GetActiveScene().name;
             //Find all objects in scene and get their materials if they are VRSL materials
-            Transform[] transforms = FindObjectsOfType<Transform>();
+            Transform[] transforms = FindObjectsByType<Transform>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
             Dictionary<string,Material> vrslMats = new Dictionary<string, Material>();
             for(int i = 0; i < transforms.Length; i++)
             {
@@ -78,7 +78,7 @@ namespace VRSL.EditorScripts
                 }
             }
 
-                VRSL_LocalUIControlPanel controlPanel = FindFirstObjectByType<VRSL_LocalUIControlPanel>();
+                VRSL_LocalUIControlPanel controlPanel = FindAnyObjectByType<VRSL_LocalUIControlPanel>();
                 if(controlPanel != null)
                 {
                     for(int i = 0; i < controlPanel.laserMaterials.Length; i++){
