@@ -244,13 +244,17 @@ namespace VRSL.EditorScripts
         }
 
         // Anchored at top, stretching horizontally with side padding.
+        // For a top-anchored stretch: offset.y is measured from the parent's
+        // top edge, with negatives going downward. The rect's top edge sits
+        // at yOffset, the bottom edge sits at yOffset - height (further down,
+        // hence more-negative).
         static void AnchorTopStretch(RectTransform rt, float yOffset,
             float height, float xPad)
         {
             rt.anchorMin = new Vector2(0f, 1f);
             rt.anchorMax = new Vector2(1f, 1f);
             rt.pivot     = new Vector2(0.5f, 1f);
-            rt.offsetMin = new Vector2(xPad, -(yOffset + (-height)));
+            rt.offsetMin = new Vector2(xPad, yOffset - height);
             rt.offsetMax = new Vector2(-xPad, yOffset);
         }
 
