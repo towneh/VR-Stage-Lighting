@@ -74,19 +74,38 @@ float3 HSV2RGB(float3 c)
 //       (preserves the hue/saturation of dim atlas regions)
 //   7 = ColorTexture (traditional): raw pixel sample at sampleUV, no
 //       brightness normalisation
+// Single return point so DXC can prove the function always returns a value
+// across every branch — multiple early returns produce a "potentially
+// uninitialized variable" warning at the call site even though every path
+// is covered.
 float3 SampleAudioLinkColor(int colorMode, float2 sampleUV)
 {
+    float3 result = float3(0, 0, 0);
     if (colorMode >= 1 && colorMode <= 4)
-        return _AudioTexture.Load(int3(colorMode - 1, AL_THEME_ROW, 0)).rgb;
-    if (colorMode == 5)
-        return _AudioTexture.Load(int3(0, AL_CCLIGHTS_ROW, 0)).rgb;
-    // ColorTexture (modes 6 & 7): convert UV to integer pixel coords.
-    int2 px = int2(saturate(sampleUV) * float2(AL_TEXTURE_WIDTH - 1, AL_TEXTURE_HEIGHT - 1));
-    float3 raw = _AudioTexture.Load(int3(px, 0)).rgb;
-    if (colorMode == 7) return raw;                  // traditional
-    float3 h = RGB2HSV(raw);                          // modern: normalise V→1
-    h.z = 1.0;
-    return HSV2RGB(h);
+    {
+        result = _AudioTexture.Load(int3(colorMode - 1, AL_THEME_ROW, 0)).rgb;
+    }
+    else if (colorMode == 5)
+    {
+        result = _AudioTexture.Load(int3(0, AL_CCLIGHTS_ROW, 0)).rgb;
+    }
+    else if (colorMode >= 6)
+    {
+        // ColorTexture (modes 6 & 7): convert UV to integer pixel coords.
+        int2 px = int2(saturate(sampleUV) * float2(AL_TEXTURE_WIDTH - 1, AL_TEXTURE_HEIGHT - 1));
+        float3 raw = _AudioTexture.Load(int3(px, 0)).rgb;
+        if (colorMode == 7)
+        {
+            result = raw;                                 // traditional
+        }
+        else
+        {
+            float3 h = RGB2HSV(raw);                       // modern: normalise V→1
+            h.z = 1.0;
+            result = HSV2RGB(h);
+        }
+    }
+    return result;
 }
 
 // ── Kernel: one thread per fixture ───────────────────────────────────────────
