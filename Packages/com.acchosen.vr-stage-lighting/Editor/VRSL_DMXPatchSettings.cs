@@ -223,7 +223,6 @@ namespace VRSL.EditorScripts
         private VRSL_LocalUIControlPanel panel;
         private string[] dataToPDF;
         private int pdfLineCount = 0;
-        private int pdfPageCount = 1;
         private DataTable patchList;
 
 
@@ -243,13 +242,13 @@ namespace VRSL.EditorScripts
         }
         public void ForceSave()
         {
-            string assetPath =  AssetDatabase.GetAssetPath(this.GetInstanceID());
+            string assetPath =  AssetDatabase.GetAssetPath(this);
             if(targetScene != null)
                 AssetDatabase.RenameAsset(assetPath, "VRSL DMX Patch Data_" + targetScene.name);
             UnityEditor.EditorUtility.SetDirty(this);
             UnityEditor.AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
-            Selection.activeObject = AssetDatabase.LoadAssetAtPath<VRSL_DMXPatchSettings>(AssetDatabase.GetAssetPath(this.GetInstanceID())); 
+            Selection.activeObject = AssetDatabase.LoadAssetAtPath<VRSL_DMXPatchSettings>(AssetDatabase.GetAssetPath(this));
         }
         public void SetScene()
         {

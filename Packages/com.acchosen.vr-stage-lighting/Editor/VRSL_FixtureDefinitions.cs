@@ -72,7 +72,7 @@ namespace VRSL.EditorScripts
             UnityEditor.EditorUtility.SetDirty(this);
             UnityEditor.AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
-            Selection.activeObject = AssetDatabase.LoadAssetAtPath<VRSL_FixtureDefinitions>(AssetDatabase.GetAssetPath(this.GetInstanceID())); 
+            Selection.activeObject = AssetDatabase.LoadAssetAtPath<VRSL_FixtureDefinitions>(AssetDatabase.GetAssetPath(this));
         }
 
         public string[] GetNames()
