@@ -30,6 +30,7 @@ namespace VRSL
         SerializedProperty _minSpotAngle;
         SerializedProperty _maxSpotAngle;
         SerializedProperty _range;
+        SerializedProperty _emitterDepth;
 
         // Movement Settings
         SerializedProperty _enablePanTilt;
@@ -84,6 +85,7 @@ namespace VRSL
             _minSpotAngle        = serializedObject.FindProperty("minSpotAngle");
             _maxSpotAngle        = serializedObject.FindProperty("maxSpotAngle");
             _range               = serializedObject.FindProperty("range");
+            _emitterDepth        = serializedObject.FindProperty("emitterDepth");
 
             _enablePanTilt       = serializedObject.FindProperty("enablePanTilt");
             _invertPan           = serializedObject.FindProperty("invertPan");
@@ -152,6 +154,10 @@ namespace VRSL
             EditorGUILayout.PropertyField(_minSpotAngle);
             EditorGUILayout.PropertyField(_maxSpotAngle);
             EditorGUILayout.PropertyField(_range);
+            // Emitter depth only meaningfully affects spot cones; hide for point lights
+            // since the math collapses back to a point source regardless.
+            if (!_isPointLight.boolValue)
+                EditorGUILayout.PropertyField(_emitterDepth);
 
             EditorGUILayout.Space();
             EditorGUILayout.Space();

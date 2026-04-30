@@ -29,6 +29,7 @@ namespace VRSL
         SerializedProperty _isPointLight;
         SerializedProperty _spotAngle;
         SerializedProperty _range;
+        SerializedProperty _emitterDepth;
 
         // Movement Settings
         SerializedProperty _enablePanTilt;
@@ -74,6 +75,7 @@ namespace VRSL
             _isPointLight              = serializedObject.FindProperty("isPointLight");
             _spotAngle                 = serializedObject.FindProperty("spotAngle");
             _range                     = serializedObject.FindProperty("range");
+            _emitterDepth              = serializedObject.FindProperty("emitterDepth");
 
             _enablePanTilt   = serializedObject.FindProperty("enablePanTilt");
             _panTransform    = serializedObject.FindProperty("panTransform");
@@ -135,6 +137,10 @@ namespace VRSL
             EditorGUILayout.PropertyField(_isPointLight);
             EditorGUILayout.PropertyField(_spotAngle);
             EditorGUILayout.PropertyField(_range, new GUIContent("Spot Range", _range.tooltip));
+            // Emitter depth only meaningfully affects spot cones; hide for point lights
+            // since the math collapses back to a point source regardless.
+            if (!_isPointLight.boolValue)
+                EditorGUILayout.PropertyField(_emitterDepth);
 
             EditorGUILayout.Space();
             EditorGUILayout.Space();
