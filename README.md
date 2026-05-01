@@ -124,6 +124,7 @@ See `Documentation~/URP-Realtime-Volumetric-Lights.md` for the architecture and 
 - Compression artifacting can cause movement data to be scrambled a bit. VRSL works to compensate for the scrambling somewhat, but does make the movement much slower.
   - Light fixtures have the ability to set to control the smoothing intensity, but it is recommended to keep the smoothing at maximum (which is 0) for most situations.
   - If quicker movement is needed, it is recommended to do it in small bursts, quickly returning the smoothing back to maximum when you can.
+- **Unity 2022 / VRChat projects without URP installed**: the URP realtime light shaders (`Hidden/VRSL/DeferredLighting`, `Hidden/VRSL/VolumetricLighting`) will log shader compile errors in the Console because their `#include` of `Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl` doesn't resolve. These are **cosmetic only** — the project still builds and runs, and the legacy mesh-shader fixture path (which is what VRChat scenes use) is unaffected. The URP path itself isn't usable in those projects anyway. A future release will move the URP-only shaders into a Package Manager sample so they're not auto-imported in non-URP projects.
 
 <p align="center">
   <img src="https://user-images.githubusercontent.com/107726700/194075483-c4eb51fb-40da-4974-9820-bfb1ede75ab4.gif">
