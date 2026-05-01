@@ -22,21 +22,24 @@ SamplerState sampler_point_clamp;
 // ── DMX texture sampling ──────────────────────────────────────────────────────
 // Direct port of getValueAtCoords() from VRSL-DMXFunctions.cginc.
 // Supports IndustryRead (non-Legacy, non-NineUniverse) mode only.
-float GetDMXValue(int ch, Texture2D<float4> tex)
+// Channel inputs are uint rather than int because DMX addresses are always
+// positive — this lets Metal/SPIR-V use the fast unsigned modulus path
+// instead of warning about slow signed modulus.
+float GetDMXValue(uint ch, Texture2D<float4> tex)
 {
-    int x = ch % 13;
-    if (x == 0) x = 13;
+    uint x = ch % 13u;
+    if (x == 0u) x = 13u;
 
-    float y = (ch % 13 == 0) ? (ch / 13.0) - 1.0 : (ch / 13.0);
+    float y = (ch % 13u == 0u) ? (ch / 13.0) - 1.0 : (ch / 13.0);
 
     // Correction table for channel 13 in specific ranges (matches CGINC exactly)
-    if (x == 13)
+    if (x == 13u)
     {
-        if (ch >= 90   && ch <= 101)  y -= 1.0;
-        if (ch >= 160  && ch <= 205)  y -= 1.0;
-        if (ch >= 326  && ch <= 404)  y -= 1.0;
-        if (ch >= 676  && ch <= 819)  y -= 1.0;
-        if (ch >= 1339)               y -= 1.0;
+        if (ch >= 90u   && ch <= 101u)  y -= 1.0;
+        if (ch >= 160u  && ch <= 205u)  y -= 1.0;
+        if (ch >= 326u  && ch <= 404u)  y -= 1.0;
+        if (ch >= 676u  && ch <= 819u)  y -= 1.0;
+        if (ch >= 1339u)                y -= 1.0;
     }
 
     float resMultX = _VRSLDMXTexelSize.z / 13.0;
@@ -51,20 +54,20 @@ float GetDMXValue(int ch, Texture2D<float4> tex)
 
 // Raw-channel variant — matches getValueAtCoordsRaw() in VRSL-DMXFunctions.cginc.
 // Needed for the SpinnerTimer, whose red channel stores accumulated phase (not a color).
-float GetDMXValueRaw(int ch, Texture2D<float4> tex)
+float GetDMXValueRaw(uint ch, Texture2D<float4> tex)
 {
-    int x = ch % 13;
-    if (x == 0) x = 13;
+    uint x = ch % 13u;
+    if (x == 0u) x = 13u;
 
-    float y = (ch % 13 == 0) ? (ch / 13.0) - 1.0 : (ch / 13.0);
+    float y = (ch % 13u == 0u) ? (ch / 13.0) - 1.0 : (ch / 13.0);
 
-    if (x == 13)
+    if (x == 13u)
     {
-        if (ch >= 90   && ch <= 101)  y -= 1.0;
-        if (ch >= 160  && ch <= 205)  y -= 1.0;
-        if (ch >= 326  && ch <= 404)  y -= 1.0;
-        if (ch >= 676  && ch <= 819)  y -= 1.0;
-        if (ch >= 1339)               y -= 1.0;
+        if (ch >= 90u   && ch <= 101u)  y -= 1.0;
+        if (ch >= 160u  && ch <= 205u)  y -= 1.0;
+        if (ch >= 326u  && ch <= 404u)  y -= 1.0;
+        if (ch >= 676u  && ch <= 819u)  y -= 1.0;
+        if (ch >= 1339u)                y -= 1.0;
     }
 
     float resMultX = _VRSLDMXTexelSize.z / 13.0;
@@ -92,7 +95,7 @@ void UpdateLights(uint3 id : SV_DispatchThreadID)
 
     VRSLFixtureConfig cfg = _FixtureConfigs[idx];
 
-    int  absChannel      = (int)cfg.dmxChannel.x;
+    uint absChannel      = (uint)cfg.dmxChannel.x;
     bool enableStrobe    = cfg.dmxChannel.y > 0.5;
     bool enablePanTilt   = cfg.dmxChannel.z > 0.5;
     bool enableFine      = cfg.dmxChannel.w > 0.5;
