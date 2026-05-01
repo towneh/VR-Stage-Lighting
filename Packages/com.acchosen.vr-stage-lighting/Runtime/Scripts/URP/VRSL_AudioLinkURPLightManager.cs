@@ -106,10 +106,21 @@ namespace VRSL
                + "Each fixture selects a slot via its Gobo Index field. -1 = no gobo (open beam).")]
         public Texture2D[] goboTextures;
 
+        [Header("Color Sampling")]
+        [Tooltip("Scene-wide texture sampled by every AudioLink fixture in ColorTexture / "
+               + "ColorTextureTraditional color modes. Mirrors the legacy AudioLink Static "
+               + "approach where _SamplingTexture sat on the fixture material rather than per "
+               + "fixture instance — projects typically pick one palette/atlas/RT for all "
+               + "their fixtures and rely on per-fixture textureSamplingCoordinates to choose "
+               + "the colour. Accepts any Texture or RenderTexture; leave blank to fall back "
+               + "to AudioLink's _AudioTexture atlas.")]
+        public Texture samplingTexture;
+
         // ── Public API for the render passes ──────────────────────────────────
         public GraphicsBuffer FixtureConfigBuffer { get; private set; }
         public GraphicsBuffer LightDataBuffer     { get; private set; }
         public RTHandle       AudioLinkHandle     { get; private set; }
+        public RTHandle       SamplingTextureHandle { get; private set; }
         public Texture2DArray GoboArray           { get; private set; }
         public int  FixtureCount  { get; private set; }
         public int  GoboCount     { get; private set; }
@@ -154,6 +165,12 @@ namespace VRSL
 
         List<VRStageLighting_AudioLink_RealtimeLight> _fixtures = new();
         RenderTexture _cachedAudioTex;
+        Texture       _cachedSamplingTex;
+        // A 1×1 black RenderTexture the manager owns, used as the sampling-slot
+        // fallback when samplingTexture is empty. RenderTextures wrap into
+        // RTHandle/TextureHandle deterministically, unlike Texture2D.blackTexture
+        // (a Unity built-in shared resource).
+        RenderTexture _fallbackBlackRT;
 
         // Render-pass instances. Allocated in OnEnable, reused across cameras and
         // frames, dropped in OnDisable. Stateless beyond renderPassEvent and
@@ -173,7 +190,12 @@ namespace VRSL
 
         void OnEnable()
         {
+            EnsureFallbackBlackRT();
             RefreshFixtures();
+            // Allocate the sampling-texture handle eagerly so the compute pass on
+            // the first render frame already has a valid binding; LateUpdate's
+            // refresh logic alone can race with rendering on activation frames.
+            TryRefreshSamplingTextureHandle();
             SubscribeRuntimeInjection();
         }
 
@@ -182,6 +204,8 @@ namespace VRSL
             UnsubscribeRuntimeInjection();
             ReleaseBuffers();
             ReleaseAudioLinkHandle();
+            ReleaseSamplingTextureHandle();
+            ReleaseFallbackBlackRT();
         }
 
         void OnDestroy()
@@ -193,8 +217,9 @@ namespace VRSL
         {
             // Re-upload every frame — animated transforms change direction each frame.
             UploadFixtureConfigs();
-            // Refresh RTHandle if AudioLink RenderTexture reference changed.
+            // Refresh RTHandles if their source references have changed.
             TryRefreshAudioLinkHandle();
+            TryRefreshSamplingTextureHandle();
         }
 
         // ── Public ────────────────────────────────────────────────────────────
@@ -344,6 +369,55 @@ namespace VRSL
             RTHandles.Release(AudioLinkHandle);
             AudioLinkHandle  = null;
             _cachedAudioTex  = null;
+        }
+
+        // The compute kernel needs SamplingTextureHandle bound every dispatch
+        // (Unity 6 validates compute texture slots have valid handles), so we
+        // always wrap *something* — the user's assigned texture if present, or
+        // a 1×1 black RT we own as a no-op fallback. Mode 6 (HSV-normalised)
+        // turns the black sample into white light; Mode 7 (traditional) keeps
+        // it black.
+        void TryRefreshSamplingTextureHandle()
+        {
+            Texture src = samplingTexture != null ? samplingTexture : _fallbackBlackRT;
+            if (src == null) return;        // happens only if EnsureFallbackBlackRT failed
+            if (src == _cachedSamplingTex) return;
+
+            ReleaseSamplingTextureHandle();
+            _cachedSamplingTex = src;
+            SamplingTextureHandle = RTHandles.Alloc(src);
+        }
+
+        void ReleaseSamplingTextureHandle()
+        {
+            RTHandles.Release(SamplingTextureHandle);
+            SamplingTextureHandle = null;
+            _cachedSamplingTex    = null;
+        }
+
+        void EnsureFallbackBlackRT()
+        {
+            if (_fallbackBlackRT != null) return;
+            _fallbackBlackRT = new RenderTexture(1, 1, 0, RenderTextureFormat.ARGB32,
+                                                 RenderTextureReadWrite.Linear)
+            {
+                name      = "VRSL_AL_SamplingFallback_Black",
+                hideFlags = HideFlags.HideAndDontSave,
+            };
+            _fallbackBlackRT.Create();
+            // Clear once to a deterministic black (1×1 so cost is negligible).
+            var prevActive = RenderTexture.active;
+            RenderTexture.active = _fallbackBlackRT;
+            GL.Clear(false, true, Color.black);
+            RenderTexture.active = prevActive;
+        }
+
+        void ReleaseFallbackBlackRT()
+        {
+            if (_fallbackBlackRT == null) return;
+            _fallbackBlackRT.Release();
+            Object.Destroy(_fallbackBlackRT);
+            _fallbackBlackRT = null;
         }
 
         void ReleaseBuffers()

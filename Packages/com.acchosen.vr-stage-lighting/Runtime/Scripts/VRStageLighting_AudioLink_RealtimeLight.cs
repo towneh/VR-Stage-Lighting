@@ -69,10 +69,12 @@ namespace VRSL
         [Tooltip("Fixed emission color used when Color Mode is set to Emission.")]
         public Color emissionColor = Color.white;
 
-        [Tooltip("UV coordinates within _AudioTexture to sample when Color Mode is set to "
-               + "ColorTexture. Useful for picking specific audio reactivity regions of "
-               + "AudioLink's atlas (e.g., a particular theme color region or a custom "
-               + "AudioLink Shader Range). Range [0,1] in both axes.")]
+        [Tooltip("UV coordinates within the manager's sampling texture (or AudioLink's "
+               + "atlas if the manager has none assigned) to read when Color Mode is "
+               + "set to ColorTexture or ColorTextureTraditional. Range [0,1] in both "
+               + "axes. The texture itself is assigned scene-wide on the "
+               + "VRSL_AudioLinkURPLightManager, mirroring how the legacy "
+               + "_SamplingTexture sat on the fixture material rather than per-fixture.")]
         public Vector2 textureSamplingCoordinates = new Vector2(0f, 0.5f);
 
         // ── Light ─────────────────────────────────────────────────────────────

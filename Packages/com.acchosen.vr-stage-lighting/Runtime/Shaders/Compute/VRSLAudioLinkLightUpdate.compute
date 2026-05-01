@@ -7,6 +7,16 @@
 // produce incorrect values since each texel encodes a distinct data channel/pixel.
 Texture2D<float4> _AudioTexture;
 
+// Scene-wide color sampling texture, bound per-dispatch by the compute pass
+// from VRSL_AudioLinkURPLightManager.samplingTexture (mirrors the legacy
+// AudioLink Static path's _SamplingTexture material slot). When the manager's
+// field is empty the pass binds an owned 1×1 black RenderTexture so the slot
+// always has a valid binding — Mode 6 (HSV-normalised) on a black sample
+// produces white light, Mode 7 (traditional) produces black. The
+// sampler_linear_clamp used to read the texture is declared in
+// VRSLLightingLibrary.hlsl alongside the gobo array sampler.
+Texture2D<float4> _VRSLALSamplingTexture;
+
 // ── AudioLink texture pixel coordinates (from AudioLink.cginc) ────────────────
 // Amplitude bands: x = delay (0..127, 0=most recent), y = band (0=bass..3=treble)
 #define AL_BAND_X_MAX 127
@@ -65,19 +75,24 @@ float3 HSV2RGB(float3 c)
     return c.z * lerp(K.xxx, saturate(p - K.xxx), c.y);
 }
 
-// Sample a color from the AudioLink texture based on colorMode:
+// Sample a color based on colorMode:
 //   0 = emission (handled by caller)
 //   1–4 = AudioLink theme colors 0–3 (row 23)
 //   5 = Color Chord representative pixel (row 25, x=0)
-//   6 = ColorTexture (modern): arbitrary pixel sample at sampleUV, then
-//       HSV-normalised so any non-black pixel emits at full brightness
-//       (preserves the hue/saturation of dim atlas regions)
+//   6 = ColorTexture (modern): pixel sample at sampleUV, HSV-normalised so any
+//       non-black pixel emits at full brightness (preserves hue/saturation of
+//       dim regions). Black sample → white light because saturation collapses
+//       to zero and value is forced to 1.
 //   7 = ColorTexture (traditional): raw pixel sample at sampleUV, no
-//       brightness normalisation
+//       brightness normalisation. Black sample → black light.
+//
+// Modes 6 and 7 sample _VRSLALSamplingTexture, the manager-supplied scene-wide
+// palette/atlas/RT (mirrors the legacy fixture-material's _SamplingTexture
+// slot). The compute pass guarantees the slot is bound, falling back to
+// Texture2D.blackTexture when the manager's field is empty.
+//
 // Single return point so DXC can prove the function always returns a value
-// across every branch — multiple early returns produce a "potentially
-// uninitialized variable" warning at the call site even though every path
-// is covered.
+// across every branch.
 float3 SampleAudioLinkColor(int colorMode, float2 sampleUV)
 {
     float3 result = float3(0, 0, 0);
@@ -91,9 +106,8 @@ float3 SampleAudioLinkColor(int colorMode, float2 sampleUV)
     }
     else if (colorMode >= 6)
     {
-        // ColorTexture (modes 6 & 7): convert UV to integer pixel coords.
-        int2 px = int2(saturate(sampleUV) * float2(AL_TEXTURE_WIDTH - 1, AL_TEXTURE_HEIGHT - 1));
-        float3 raw = _AudioTexture.Load(int3(px, 0)).rgb;
+        float3 raw = _VRSLALSamplingTexture.SampleLevel(
+            sampler_linear_clamp, saturate(sampleUV), 0).rgb;
         if (colorMode == 7)
         {
             result = raw;                                 // traditional
@@ -140,7 +154,7 @@ void UpdateLights(uint3 id : SV_DispatchThreadID)
     }
 
     // ── Color ─────────────────────────────────────────────────────────────────
-    // reserved.zw = textureSamplingCoordinates (only meaningful when colorMode == 6).
+    // reserved.zw = textureSamplingCoordinates (only meaningful when colorMode is 6 or 7).
     float2 sampleUV = cfg.reserved.zw;
     float3 color = (colorMode == 0)
         ? cfg.emissionColor.rgb

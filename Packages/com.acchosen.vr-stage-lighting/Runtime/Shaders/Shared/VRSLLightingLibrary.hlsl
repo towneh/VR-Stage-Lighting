@@ -216,7 +216,7 @@ struct VRSLALFixtureConfig
     float4 emissionColor;     // xyz = linear RGB (used when colorMode == 0), w = unused
     float4 reserved;          // x = gobo slot index (-1 = no gobo, 0+ = slice in _VRSLGobos),
                               // y = gobo spin speed (bipolar: 0 = no spin, negative = CCW, positive = CW),
-                              // zw = textureSamplingCoordinates UV (used when colorMode == 6)
+                              // zw = textureSamplingCoordinates UV (used when colorMode == 6 or 7)
 };
 
 #endif // VRSL_LIGHTING_LIBRARY_INCLUDED

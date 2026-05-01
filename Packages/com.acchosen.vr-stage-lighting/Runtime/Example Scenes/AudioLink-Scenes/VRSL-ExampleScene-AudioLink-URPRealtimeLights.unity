@@ -2663,6 +2663,10 @@ PrefabInstance:
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 7714854072841162277, guid: a75a7d359b94a034fa22e082ebe9cd82, type: 3}
+      propertyPath: colorMode
+      value: 6
+      objectReference: {fileID: 0}
+    - target: {fileID: 7714854072841162277, guid: a75a7d359b94a034fa22e082ebe9cd82, type: 3}
       propertyPath: bandMultiplier
       value: 2.5
       objectReference: {fileID: 0}
@@ -4498,6 +4502,10 @@ PrefabInstance:
     - target: {fileID: 7288443905043329711, guid: a75a7d359b94a034fa22e082ebe9cd82, type: 3}
       propertyPath: m_Layer
       value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7714854072841162277, guid: a75a7d359b94a034fa22e082ebe9cd82, type: 3}
+      propertyPath: colorMode
+      value: 6
       objectReference: {fileID: 0}
     - target: {fileID: 7714854072841162277, guid: a75a7d359b94a034fa22e082ebe9cd82, type: 3}
       propertyPath: emitterDepth

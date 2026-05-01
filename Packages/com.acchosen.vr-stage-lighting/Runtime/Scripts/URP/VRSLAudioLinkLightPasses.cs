@@ -42,6 +42,7 @@ namespace VRSL
                 public BufferHandle  fixtureConfigBuffer;
                 public BufferHandle  lightDataBuffer;
                 public TextureHandle audioLinkTex;
+                public TextureHandle samplingTex;
                 public ComputeShader cs;
                 public int           kernel;
                 public int           fixtureCount;
@@ -61,6 +62,15 @@ namespace VRSL
                 d.fixtureConfigBuffer = rg.ImportBuffer(mgr.FixtureConfigBuffer);
                 d.lightDataBuffer     = rg.ImportBuffer(mgr.LightDataBuffer);
                 d.audioLinkTex        = rg.ImportTexture(mgr.AudioLinkHandle);
+                // Sampling texture handle should be set up by OnEnable / LateUpdate,
+                // but if for any reason it isn't valid, reuse audioLinkTex so the
+                // compute kernel still gets *something* bound to the sampling slot
+                // (Unity 6 fails the dispatch otherwise). Mode-0 fixtures don't read
+                // the slot anyway; mode-6/7 fixtures fall back to sampling the
+                // AudioLink atlas in this degraded path.
+                d.samplingTex         = mgr.SamplingTextureHandle != null
+                                            ? rg.ImportTexture(mgr.SamplingTextureHandle)
+                                            : d.audioLinkTex;
                 d.cs                  = mgr.computeShader;
                 d.kernel              = mgr.ComputeKernel;
                 d.fixtureCount        = mgr.FixtureCount;
@@ -72,15 +82,20 @@ namespace VRSL
                 builder.UseBuffer( d.fixtureConfigBuffer, AccessFlags.Read);
                 builder.UseBuffer( d.lightDataBuffer,     AccessFlags.Write);
                 builder.UseTexture(d.audioLinkTex,        AccessFlags.Read);
+                // Skip a duplicate UseTexture if samplingTex aliases audioLinkTex
+                // (degraded fallback path).
+                if (mgr.SamplingTextureHandle != null)
+                    builder.UseTexture(d.samplingTex,     AccessFlags.Read);
 
                 builder.SetRenderFunc((PassData p, ComputeGraphContext ctx) =>
                 {
                     var cmd = ctx.cmd;
-                    cmd.SetComputeIntParam(    p.cs,           "_FixtureCount",       p.fixtureCount);
-                    cmd.SetComputeFloatParam(  p.cs,           "_VRSLTime",           p.time);
-                    cmd.SetComputeBufferParam( p.cs, p.kernel, "_ALFixtureConfigs",   p.fixtureConfigBuffer);
-                    cmd.SetComputeBufferParam( p.cs, p.kernel, "_LightData",          p.lightDataBuffer);
-                    cmd.SetComputeTextureParam(p.cs, p.kernel, "_AudioTexture",       p.audioLinkTex);
+                    cmd.SetComputeIntParam(    p.cs,           "_FixtureCount",            p.fixtureCount);
+                    cmd.SetComputeFloatParam(  p.cs,           "_VRSLTime",                p.time);
+                    cmd.SetComputeBufferParam( p.cs, p.kernel, "_ALFixtureConfigs",        p.fixtureConfigBuffer);
+                    cmd.SetComputeBufferParam( p.cs, p.kernel, "_LightData",               p.lightDataBuffer);
+                    cmd.SetComputeTextureParam(p.cs, p.kernel, "_AudioTexture",            p.audioLinkTex);
+                    cmd.SetComputeTextureParam(p.cs, p.kernel, "_VRSLALSamplingTexture",   p.samplingTex);
                     cmd.DispatchCompute(p.cs, p.kernel, Mathf.CeilToInt(p.fixtureCount / 64f), 1, 1);
                 });
             }
