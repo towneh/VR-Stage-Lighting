@@ -405,7 +405,7 @@ MonoBehaviour:
   emissionColor: {r: 1, g: 1, b: 1, a: 1}
   textureSamplingCoordinates: {x: 0, y: 0.5}
   maxIntensity: 1
-  spotAngle: 60
+  spotAngle: 30
   range: 20
   emitterDepth: 0.18
   isPointLight: 0
