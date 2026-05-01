@@ -92,7 +92,11 @@ namespace VRSL.EditorScripts
             headMap = new Dictionary<Transform, Transform>();
             baseMap = new Dictionary<Transform, Transform>();
 
+#if UNITY_6000_0_OR_NEWER
             foreach (var t in Object.FindObjectsByType<Transform>(FindObjectsInactive.Exclude))
+#else
+            foreach (var t in Object.FindObjectsByType<Transform>(FindObjectsInactive.Exclude, FindObjectsSortMode.None))
+#endif
             {
                 if (t.name != HEAD_NAME) continue;
 
