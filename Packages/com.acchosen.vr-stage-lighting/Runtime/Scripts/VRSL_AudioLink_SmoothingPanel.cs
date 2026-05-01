@@ -22,10 +22,6 @@ public class VRSL_AudioLink_SmoothingPanel : MonoBehaviour
 
     void Start()
     {
-        // Camera reference is a legacy AudioLink (pre-2.x) artefact — only
-        // wire the camera into the CRT when both are explicitly assigned.
-        // Modern AudioLink CRTs self-update, so leaving the camera blank is
-        // the expected configuration and not worth a console warning.
         if (smoothingTexture != null && audioLinkCamera != null)
         {
             audioLinkCamera.targetTexture = smoothingTexture;

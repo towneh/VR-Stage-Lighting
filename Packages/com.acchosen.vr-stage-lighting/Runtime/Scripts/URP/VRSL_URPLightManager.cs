@@ -483,9 +483,8 @@ namespace VRSL
             _lightingPass.ConfigureInput(ScriptableRenderPassInput.Normal | ScriptableRenderPassInput.Depth);
             _volumetricPass.ConfigureInput(ScriptableRenderPassInput.Depth);
 
-            // Texture2DArray (gobo wheel) is bound globally here rather than inside
-            // the render graph, which only accepts TextureHandle — same as the
-            // feature path.
+            // Gobo wheel is a Texture2DArray, bound globally here because the
+            // render graph only accepts TextureHandle.
             if (GoboArray != null)
                 Shader.SetGlobalTexture("_VRSLGobos", GoboArray);
 

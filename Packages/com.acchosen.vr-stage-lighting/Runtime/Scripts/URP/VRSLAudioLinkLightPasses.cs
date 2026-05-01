@@ -143,9 +143,8 @@ namespace VRSL
 
         // ── Volumetric pass: raymarched in-scattering ──────────────────────────
         // Mirrors VRSLDMXLightPasses.VolumetricPass — same shader, same
-        // sub-pass structure. Records three Render Graph sub-passes (depth
-        // downsample → half-res raymarch → bilateral upsample) reading the
-        // _VRSLLights buffer the AudioLink ComputePass already wrote.
+        // sub-pass structure, reading the _VRSLLights buffer the AudioLink
+        // ComputePass already wrote.
         public class VolumetricPass : ScriptableRenderPass
         {
             class DownsampleData
